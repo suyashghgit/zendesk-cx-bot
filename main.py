@@ -6,6 +6,7 @@ from datetime import datetime
 import uuid
 import logging
 import os
+from jinja2 import Environment, FileSystemLoader
 
 # Create logs directory if it doesn't exist
 os.makedirs("logs", exist_ok=True)
@@ -67,6 +68,22 @@ async def ticket_created_webhook(request: Request):
             data = body.decode('utf-8')
             data_type = "TEXT"
         
+        # Extract subject and description from Zendesk webhook data
+        subject = ""
+        description = ""
+        
+        if data_type == "JSON" and isinstance(data, dict):
+            # Navigate through the Zendesk webhook structure
+            if "detail" in data:
+                detail = data["detail"]
+                subject = detail.get("subject", "")
+                description = detail.get("description", "")
+        
+        # Render Jinja template with extracted data
+        env = Environment(loader=FileSystemLoader("templates"))
+        template = env.get_template("ticket_categorizer.jinja")
+        rendered_template = template.render(subject=subject, description=description)
+        
         # Create log entry with UUID
         log_entry = {
             "request_id": request_id,
@@ -82,7 +99,9 @@ async def ticket_created_webhook(request: Request):
         # Log to file
         logging.info(f"Request {request_id}: Webhook received successfully")
         logging.info(f"Request {request_id}: Body Type - {data_type}")
-        logging.info(f"Request {request_id}: Body - {json.dumps(data, indent=2) if data_type == 'JSON' else data}")        
+        logging.info(f"Request {request_id}: Body - {json.dumps(data, indent=2) if data_type == 'JSON' else data}")
+        logging.info(f"Request {request_id}: Rendered Template - {rendered_template}")
+        
         # Also print to console for immediate visibility
         print(f"\n{'='*50}")
         print(f"[{datetime.now()}] WEBHOOK RECEIVED - Request ID: {request_id}")

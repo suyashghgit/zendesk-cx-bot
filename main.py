@@ -4,6 +4,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import logging, os
 
+from app.config import settings  # Import settings
+
 from app.routers import webhook  # import your router
 
 # Create logs directory
@@ -19,17 +21,18 @@ logging.basicConfig(
 )
 
 app = FastAPI(
-    title="FastAPI Boilerplate",
+    title=settings.app_name,
     description="A basic FastAPI boilerplate application",
-    version="1.0.0"
+    version=settings.app_version
 )
+
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For production, restrict domains
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=settings.cors_origins,
+    allow_credentials=settings.cors_allow_credentials,
+    allow_methods=settings.cors_allow_methods,
+    allow_headers=settings.cors_allow_headers,
 )
 
 @app.get("/")
@@ -46,4 +49,4 @@ app.include_router(webhook.router)
 # Run locally
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8080, reload=True)
+    uvicorn.run("main:app", host=settings.host, port=settings.port, reload=True)

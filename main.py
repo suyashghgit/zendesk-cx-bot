@@ -7,6 +7,15 @@ import uuid
 import logging
 import os
 from jinja2 import Environment, FileSystemLoader
+import requests
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
+# Hugging Face API configuration
+HUGGINGFACE_API_URL = "https://api-inference.huggingface.co/models/facebook/bart-large-mnli"
+HUGGINGFACE_API_KEY = os.getenv("HUGGINGFACE_API_KEY")
 
 # Create logs directory if it doesn't exist
 os.makedirs("logs", exist_ok=True)
@@ -47,6 +56,75 @@ async def health_check():
     """Health check endpoint"""
     return {"status": "healthy", "message": "Service is running"}
 
+async def send_to_huggingface(rendered_template: str) -> dict:
+    """Send the rendered template to Hugging Face for categorization"""
+    try:
+        headers = {
+            "Authorization": f"Bearer {HUGGINGFACE_API_KEY}",
+            "Content-Type": "application/json"
+        }
+        
+        # Define the categories as candidate labels
+        candidate_labels = [
+            "human_resources",
+            "engineering", 
+            "it_support",
+            "product",
+            "design",
+            "sales",
+            "marketing",
+            "finance",
+            "legal",
+            "customer_support",
+            "operations",
+            "executive"
+        ]
+        
+        payload = {
+            "inputs": rendered_template,
+            "parameters": {
+                "candidate_labels": candidate_labels
+            }
+        }
+        
+        response = requests.post(
+            HUGGINGFACE_API_URL,
+            headers=headers,
+            json=payload,
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            # Get the best matching category
+            category = result.get("labels", [""])[0] if result.get("labels") else ""
+            scores = result.get("scores", [])
+            
+            return {
+                "status": "success",
+                "category": category,
+                "confidence": scores[0] if scores else 0.0,
+                "model_used": "facebook/bart-large-mnli",
+                "usage": {
+                    "prompt_tokens": len(rendered_template.split()),
+                    "completion_tokens": 1,
+                    "total_tokens": len(rendered_template.split()) + 1
+                }
+            }
+        else:
+            logging.error(f"Hugging Face API error: {response.status_code} - {response.text}")
+            return {
+                "status": "error",
+                "error": f"API request failed with status {response.status_code}: {response.text}"
+            }
+            
+    except Exception as e:
+        logging.error(f"Hugging Face API error: {str(e)}")
+        return {
+            "status": "error",
+            "error": str(e)
+        }
+
 @app.post("/ticketCreatedWebhook")
 async def ticket_created_webhook(request: Request):
     """Webhook endpoint to receive ticket creation events"""
@@ -84,6 +162,9 @@ async def ticket_created_webhook(request: Request):
         template = env.get_template("ticket_categorizer.jinja")
         rendered_template = template.render(subject=subject, description=description)
         
+        # Send to Hugging Face for categorization
+        huggingface_response = await send_to_huggingface(rendered_template)
+        
         # Create log entry with UUID
         log_entry = {
             "request_id": request_id,
@@ -93,7 +174,8 @@ async def ticket_created_webhook(request: Request):
             "headers": headers,
             "body_type": data_type,
             "body": data if data_type == "TEXT" else data,
-            "status": "success"
+            "status": "success",
+            "huggingface_response": huggingface_response
         }
         
         # Log to file
@@ -101,6 +183,7 @@ async def ticket_created_webhook(request: Request):
         logging.info(f"Request {request_id}: Body Type - {data_type}")
         logging.info(f"Request {request_id}: Body - {json.dumps(data, indent=2) if data_type == 'JSON' else data}")
         logging.info(f"Request {request_id}: Rendered Template - {rendered_template}")
+        logging.info(f"Request {request_id}: Hugging Face Response - {json.dumps(huggingface_response, indent=2)}")
         
         # Also print to console for immediate visibility
         print(f"\n{'='*50}")

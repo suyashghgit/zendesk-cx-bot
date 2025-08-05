@@ -216,7 +216,7 @@ async def call_azure_llm_with_comments(ticket_public_comments: list) -> dict:
         messages = [
             {
                 "role": "system",
-                "content": "You are a support quality analyst AI. You will be given a list of Zendesk ticket comments, each with plain_body, created_at, and author_id.\n\nThere are two participants: a Requester (customer) and a Support Engineer (agent). You must:\n1. Identify the role of each participant (Requester or Engineer) based on tone and context.\n2. Group and label messages by author.\n3. Analyze the customer experience and return a structured JSON response.\n\nYour output should include:\n- summary\n- sentiment (Positive, Neutral, Negative)\n- satisfaction_likelihood (High, Medium, Low)\n- pain_points\n- agent_empathy_score (1–5)\n- clarity_score (1–5)\n- resolution_confidence\n- frustration_signals\n- metrics:\n    - first_response_time_minutes\n    - resolution_time_hours\n    - total_messages (per party)\n- action_recommendations\n - message content"
+                "content": "You are a support quality analyst AI. You will be given a list of Zendesk ticket comments, each with plain_body, created_at, and author_id.\n\nThere are two participants: a Requester (customer) and a Support Engineer (agent). You must:\n1. Identify the role of each participant (Requester or Engineer) based on tone and context.\n2. Group and label messages by author.\n3. Analyze the customer experience and return a structured JSON response.\n\nYour output should include:\n- summary\n- sentiment (Positive, Neutral, Negative)\n- satisfaction_likelihood (High, Medium, Low)\n- pain_points\n- agent_empathy_score (1–5)\n- clarity_score (1–5)\n- resolution_confidence\n- frustration_signals\n - action_recommendations\n - message content"
             },
             {
                 "role": "user",
@@ -390,6 +390,16 @@ async def ticket_status_changed_webhook(request: Request):
                         logging.info(f"Request {request_id}: Calling Azure LLM with {len(ticket_public_comments)} comments")
                         llm_response = await call_azure_llm_with_comments(ticket_public_comments)
                         logging.info(f"Request {request_id}: LLM response - {llm_response}")
+                        
+                        # Extract and log the analysis from generated content
+                        if llm_response and llm_response.get("status") == "success":
+                            try:
+                                generated_content = llm_response.get("generated_content", "{}")
+                                content_data = json.loads(generated_content)
+                                analysis = content_data.get("analysis", {})
+                                logging.info(f"Request {request_id}: Ticket Analysis - {json.dumps(analysis, indent=2)}")
+                            except (json.JSONDecodeError, KeyError) as e:
+                                logging.error(f"Request {request_id}: Error extracting analysis from LLM response - {str(e)}")
                     else:
                         logging.warning(f"Request {request_id}: No public comments found or error occurred")
                         llm_response = None

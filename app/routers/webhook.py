@@ -15,7 +15,7 @@ router = APIRouter()
 
 async def update_zendesk_ticket_tags(huggingface_response: dict, ticket_id: str) -> dict:
     """
-    Update a Zendesk ticket with the categorization results from HuggingFace.
+    Update a Zendesk ticket with tags from HuggingFace analysis.
     
     Args:
         huggingface_response (dict): The response from HuggingFace API containing category and confidence
@@ -103,6 +103,161 @@ async def update_zendesk_ticket_tags(huggingface_response: dict, ticket_id: str)
             "status": "error",
             "message": f"Exception occurred while updating ticket: {str(e)}"
         }
+
+async def update_zendesk_ticket_with_analysis(analysis: dict, ticket_id: str) -> dict:
+    """
+    Update a Zendesk ticket with analysis results as a comment.
+    
+    Args:
+        analysis (dict): The analysis data containing insights about the ticket
+        ticket_id (str): The Zendesk ticket ID to update
+    
+    Returns:
+        dict: Response from Zendesk API with status and details
+    """
+    try:
+        # Format the analysis data for the comment
+        comment_body = format_analysis_for_comment(analysis)
+        
+        # Prepare the update data for Zendesk
+        update_data = {
+            "ticket": {
+                "comment": {
+                    "body": comment_body,
+                    "public": False
+                }
+            }
+        }
+        
+        # Zendesk API configuration
+        zendesk_domain = os.getenv("ZENDESK_DOMAIN")
+        zendesk_email = os.getenv("ZENDESK_EMAIL")
+        zendesk_api_token = os.getenv("ZENDESK_API_KEY")
+        
+        if not all([zendesk_domain, zendesk_email, zendesk_api_token]):
+            return {
+                "status": "error",
+                "message": "Missing Zendesk configuration. Please set ZENDESK_DOMAIN, ZENDESK_EMAIL, and ZENDESK_API_TOKEN environment variables."
+            }
+        
+        #Prepare the authorization header
+        auth_header = base64.b64encode(f"{zendesk_email}/token:{zendesk_api_token}".encode()).decode()
+        
+        # Zendesk API headers
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Basic {auth_header}"
+        }
+        
+        # Zendesk API URL for updating ticket
+        zendesk_url = f"https://{zendesk_domain}/api/v2/tickets/{ticket_id}.json"
+        
+        # Make the API call to update the ticket
+        response = requests.put(
+            zendesk_url,
+            headers=headers,
+            json=update_data,
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            logging.info(f"Successfully updated Zendesk ticket {ticket_id} with analysis")
+            return {
+                "status": "success",
+                "message": f"Ticket {ticket_id} updated successfully with analysis",
+                "zendesk_response": response.json()
+            }
+        else:
+            logging.error(f"Failed to update Zendesk ticket {ticket_id}: {response.status_code} - {response.text}")
+            return {
+                "status": "error",
+                "message": f"Failed to update Zendesk ticket: {response.status_code}",
+                "zendesk_response": response.text
+            }
+            
+    except Exception as e:
+        logging.error(f"Error updating Zendesk ticket {ticket_id}: {str(e)}")
+        return {
+            "status": "error",
+            "message": f"Exception occurred while updating ticket: {str(e)}"
+        }
+
+def format_analysis_for_comment(analysis: dict) -> str:
+    """
+    Format analysis data into a readable comment for Zendesk.
+    
+    Args:
+        analysis (dict): The analysis data
+    
+    Returns:
+        str: Formatted comment text
+    """
+    try:
+        comment_parts = []
+        comment_parts.append("🤖 **AI Analysis Report**")
+        comment_parts.append("")
+        
+        # Add summary if available
+        if analysis.get("summary"):
+            comment_parts.append(f"**Summary:** {analysis['summary']}")
+            comment_parts.append("")
+        
+        # Add sentiment analysis
+        if analysis.get("sentiment"):
+            sentiment_emoji = {
+                "Positive": "😊",
+                "Neutral": "😐", 
+                "Negative": "😞"
+            }.get(analysis["sentiment"], "❓")
+            comment_parts.append(f"**Sentiment:** {sentiment_emoji} {analysis['sentiment']}")
+        
+        # Add satisfaction likelihood
+        if analysis.get("satisfaction_likelihood"):
+            satisfaction_emoji = {
+                "High": "✅",
+                "Medium": "⚠️",
+                "Low": "❌"
+            }.get(analysis["satisfaction_likelihood"], "❓")
+            comment_parts.append(f"**Satisfaction Likelihood:** {satisfaction_emoji} {analysis['satisfaction_likelihood']}")
+        
+        # Add scores
+        if analysis.get("agent_empathy_score"):
+            comment_parts.append(f"**Agent Empathy Score:** {analysis['agent_empathy_score']}/5")
+        
+        if analysis.get("clarity_score"):
+            comment_parts.append(f"**Clarity Score:** {analysis['clarity_score']}/5")
+        
+        # Add pain points if available
+        if analysis.get("pain_points") and analysis["pain_points"]:
+            comment_parts.append("")
+            comment_parts.append("**Pain Points:**")
+            for point in analysis["pain_points"]:
+                comment_parts.append(f"• {point}")
+        
+        # Add frustration signals if available
+        if analysis.get("frustration_signals") and analysis["frustration_signals"]:
+            comment_parts.append("")
+            comment_parts.append("**Frustration Signals:**")
+            for signal in analysis["frustration_signals"]:
+                comment_parts.append(f"• {signal}")
+        
+        # Add action recommendations if available
+        if analysis.get("action_recommendations") and analysis["action_recommendations"]:
+            comment_parts.append("")
+            comment_parts.append("**Action Recommendations:**")
+            for rec in analysis["action_recommendations"]:
+                comment_parts.append(f"• {rec}")
+        
+        # Add resolution confidence if available
+        if analysis.get("resolution_confidence"):
+            comment_parts.append("")
+            comment_parts.append(f"**Resolution Confidence:** {analysis['resolution_confidence']}")
+        
+        return "\n".join(comment_parts)
+        
+    except Exception as e:
+        logging.error(f"Error formatting analysis for comment: {str(e)}")
+        return f"🤖 **AI Analysis Report**\n\nError formatting analysis: {str(e)}"
 
 async def extract_ticket_comments(ticket_id: str, ticket_data: dict) -> dict:
     """
@@ -398,15 +553,28 @@ async def ticket_status_changed_webhook(request: Request):
                                 content_data = json.loads(generated_content)
                                 analysis = content_data.get("analysis", {})
                                 logging.info(f"Request {request_id}: Ticket Analysis - {json.dumps(analysis, indent=2)}")
+                                
+                                # Update Zendesk ticket with analysis
+                                if analysis:
+                                    logging.info(f"Request {request_id}: Updating Zendesk ticket {ticket_id} with analysis")
+                                    analysis_update_result = await update_zendesk_ticket_with_analysis(analysis, ticket_id)
+                                    logging.info(f"Request {request_id}: Analysis update result - {analysis_update_result}")
+                                else:
+                                    logging.warning(f"Request {request_id}: No analysis data found to update ticket")
+                                    analysis_update_result = None
+                                    
                             except (json.JSONDecodeError, KeyError) as e:
                                 logging.error(f"Request {request_id}: Error extracting analysis from LLM response - {str(e)}")
+                                analysis_update_result = None
                     else:
                         logging.warning(f"Request {request_id}: No public comments found or error occurred")
                         llm_response = None
+                        analysis_update_result = None
                 else:
                     logging.warning(f"Request {request_id}: No ticket ID found, skipping summary update")
                     ticket_public_comments = None
                     llm_response = None
+                    analysis_update_result = None
                 
                 return {
                     "status": "success",
@@ -416,7 +584,8 @@ async def ticket_status_changed_webhook(request: Request):
                     "ticket_id": detail.get("id", ""),
                     "current_status": current_status,
                     "ticket_status": ticket_status,
-                    "llm_response": llm_response
+                    "llm_response": llm_response,
+                    "analysis_update_result": analysis_update_result
                 }
             else:
                 logging.info(f"Request {request_id}: Ticket status is not SOLVED (current: {current_status}, ticket: {ticket_status})")

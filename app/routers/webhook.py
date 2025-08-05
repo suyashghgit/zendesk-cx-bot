@@ -7,6 +7,7 @@ from jinja2 import Environment, FileSystemLoader
 import requests
 import os
 import base64
+from openai import AzureOpenAI
 
 from services.huggingface import send_to_huggingface  # Import helper
 
@@ -149,20 +150,19 @@ async def extract_ticket_comments(ticket_id: str, ticket_data: dict) -> dict:
             comments_data = response.json()
             comments = comments_data.get("comments", [])
             
-            # Extract only public comments
-            public_comments = [comment for comment in comments if comment.get("public", False)]
+            # Extract only public comments with only plain_body, created_at, and author_id fields
+            public_comments = [
+                {
+                    "plain_body": comment.get("plain_body", ""),
+                    "created_at": comment.get("created_at", ""),
+                    "author_id": comment.get("author_id", "")
+                }
+                for comment in comments if comment.get("public", False)
+            ]
             
             logging.info(f"Successfully fetched comments for Zendesk ticket {ticket_id}. Found {len(public_comments)} public comments out of {len(comments)} total comments.")
             
-            return {
-                "status": "success",
-                "message": f"Successfully fetched comments for ticket {ticket_id}",
-                "ticket_id": ticket_id,
-                "total_comments": len(comments),
-                "public_comments": public_comments,
-                "public_comments_count": len(public_comments),
-                "all_comments_response": comments_data
-            }
+            return public_comments
         else:
             logging.error(f"Failed to fetch comments for Zendesk ticket {ticket_id}: {response.status_code} - {response.text}")
             return {
@@ -176,6 +176,84 @@ async def extract_ticket_comments(ticket_id: str, ticket_data: dict) -> dict:
         return {
             "status": "error",
             "message": f"Exception occurred while fetching comments: {str(e)}"
+        }
+
+async def call_azure_llm_with_comments(ticket_public_comments: list) -> dict:
+    """
+    Call Azure OpenAI LLM with ticket public comments to generate insights or summaries.
+    
+    Args:
+        ticket_public_comments (list): List of public comments from the ticket
+    
+    Returns:
+        dict: Response from Azure OpenAI with generated content
+    """
+    try:
+        # Azure OpenAI configuration
+        endpoint = os.getenv("AZURE_OPENAI_ENDPOINT", "https://zendesk-resource.cognitiveservices.azure.com/")
+        model_name = os.getenv("AZURE_OPENAI_MODEL", "model-router")
+        deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT", "model-router")
+        subscription_key = os.getenv("AZURE_OPENAI_API_KEY")
+        api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2024-12-01-preview")
+        
+        if not subscription_key:
+            return {
+                "status": "error",
+                "message": "Missing Azure OpenAI API key. Please set AZURE_OPENAI_API_KEY environment variable."
+            }
+        
+        # Initialize Azure OpenAI client
+        client = AzureOpenAI(
+            api_version=api_version,
+            azure_endpoint=endpoint,
+            api_key=subscription_key,
+        )
+        
+        # Prepare the comments as JSON for the LLM
+        comments_json = json.dumps(ticket_public_comments, indent=2)
+        
+        # Create the system and user messages with the specific support quality analysis prompt
+        messages = [
+            {
+                "role": "system",
+                "content": "You are a support quality analyst AI. You will be given a list of Zendesk ticket comments, each with plain_body, created_at, and author_id.\n\nThere are two participants: a Requester (customer) and a Support Engineer (agent). You must:\n1. Identify the role of each participant (Requester or Engineer) based on tone and context.\n2. Group and label messages by author.\n3. Analyze the customer experience and return a structured JSON response.\n\nYour output should include:\n- summary\n- sentiment (Positive, Neutral, Negative)\n- satisfaction_likelihood (High, Medium, Low)\n- pain_points\n- agent_empathy_score (1–5)\n- clarity_score (1–5)\n- resolution_confidence\n- frustration_signals\n- metrics:\n    - first_response_time_minutes\n    - resolution_time_hours\n    - total_messages (per party)\n- action_recommendations\n - message content"
+            },
+            {
+                "role": "user",
+                "content": f"Here is the conversation data in json {comments_json}"
+            }
+        ]
+        
+        # Call Azure OpenAI
+        response = client.chat.completions.create(
+            messages=messages,
+            max_tokens=8192,
+            temperature=0.7,
+            top_p=0.95,
+            frequency_penalty=0.0,
+            presence_penalty=0.0,
+            model=deployment
+        )
+        
+        # Extract the response content
+        generated_content = response.choices[0].message.content
+        model_used = response.model
+        
+        logging.info(f"Successfully called Azure OpenAI with model: {model_used}")
+        
+        return {
+            "status": "success",
+            "message": "Successfully generated insights from ticket comments",
+            "model_used": model_used,
+            "generated_content": generated_content,
+            "comments_analyzed": len(ticket_public_comments)
+        }
+        
+    except Exception as e:
+        logging.error(f"Error calling Azure OpenAI: {str(e)}")
+        return {
+            "status": "error",
+            "message": f"Exception occurred while calling Azure OpenAI: {str(e)}"
         }
 
 @router.post("/ticketCreatedWebhook")
@@ -305,11 +383,20 @@ async def ticket_status_changed_webhook(request: Request):
                 ticket_id = detail.get("id", "")
                 if ticket_id:
                     logging.info(f"Request {request_id}: Updating ticket summary for ticket {ticket_id}")
-                    summary_update_result = await extract_ticket_comments(ticket_id, detail)
-                    logging.info(f"Request {request_id}: Summary update result - {summary_update_result}")
+                    ticket_public_comments = await extract_ticket_comments(ticket_id, detail)
+                    
+                    # Call Azure LLM with the public comments
+                    if isinstance(ticket_public_comments, list) and len(ticket_public_comments) > 0:
+                        logging.info(f"Request {request_id}: Calling Azure LLM with {len(ticket_public_comments)} comments")
+                        llm_response = await call_azure_llm_with_comments(ticket_public_comments)
+                        logging.info(f"Request {request_id}: LLM response - {llm_response}")
+                    else:
+                        logging.warning(f"Request {request_id}: No public comments found or error occurred")
+                        llm_response = None
                 else:
                     logging.warning(f"Request {request_id}: No ticket ID found, skipping summary update")
-                    summary_update_result = None
+                    ticket_public_comments = None
+                    llm_response = None
                 
                 return {
                     "status": "success",
@@ -318,7 +405,8 @@ async def ticket_status_changed_webhook(request: Request):
                     "timestamp": datetime.now().isoformat(),
                     "ticket_id": detail.get("id", ""),
                     "current_status": current_status,
-                    "ticket_status": ticket_status
+                    "ticket_status": ticket_status,
+                    "llm_response": llm_response
                 }
             else:
                 logging.info(f"Request {request_id}: Ticket status is not SOLVED (current: {current_status}, ticket: {ticket_status})")

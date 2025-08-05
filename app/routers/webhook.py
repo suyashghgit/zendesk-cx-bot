@@ -14,6 +14,72 @@ from services.azure_openai import call_azure_llm_with_comments  # Import Azure O
 
 router = APIRouter()
 
+async def update_zendesk_ticket(ticket_id: str, update_data: dict, operation_description: str = "update") -> dict:
+    """
+    Generic function to update a Zendesk ticket with any data.
+    
+    Args:
+        ticket_id (str): The Zendesk ticket ID to update
+        update_data (dict): The data to update the ticket with
+        operation_description (str): Description of the operation for logging
+    
+    Returns:
+        dict: Response from Zendesk API with status and details
+    """
+    try:
+        # Zendesk API configuration
+        zendesk_domain = os.getenv("ZENDESK_DOMAIN")
+        zendesk_email = os.getenv("ZENDESK_EMAIL")
+        zendesk_api_token = os.getenv("ZENDESK_API_KEY")
+        
+        if not all([zendesk_domain, zendesk_email, zendesk_api_token]):
+            return {
+                "status": "error",
+                "message": "Missing Zendesk configuration. Please set ZENDESK_DOMAIN, ZENDESK_EMAIL, and ZENDESK_API_TOKEN environment variables."
+            }
+        
+        # Prepare the authorization header
+        auth_header = base64.b64encode(f"{zendesk_email}/token:{zendesk_api_token}".encode()).decode()
+        
+        # Zendesk API headers
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Basic {auth_header}"
+        }
+        
+        # Zendesk API URL for updating ticket
+        zendesk_url = f"https://{zendesk_domain}/api/v2/tickets/{ticket_id}.json"
+        
+        # Make the API call to update the ticket
+        response = requests.put(
+            zendesk_url,
+            headers=headers,
+            json=update_data,
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            logging.info(f"Successfully {operation_description} Zendesk ticket {ticket_id}")
+            return {
+                "status": "success",
+                "message": f"Ticket {ticket_id} {operation_description} successfully",
+                "zendesk_response": response.json()
+            }
+        else:
+            logging.error(f"Failed to {operation_description} Zendesk ticket {ticket_id}: {response.status_code} - {response.text}")
+            return {
+                "status": "error",
+                "message": f"Failed to {operation_description} Zendesk ticket: {response.status_code}",
+                "zendesk_response": response.text
+            }
+            
+    except Exception as e:
+        logging.error(f"Error {operation_description} Zendesk ticket {ticket_id}: {str(e)}")
+        return {
+            "status": "error",
+            "message": f"Exception occurred while {operation_description} ticket: {str(e)}"
+        }
+
 async def update_zendesk_ticket_tags(huggingface_response: dict, ticket_id: str) -> dict:
     """
     Update a Zendesk ticket with tags from HuggingFace analysis.
@@ -50,59 +116,21 @@ async def update_zendesk_ticket_tags(huggingface_response: dict, ticket_id: str)
             }
         }
         
-        # Zendesk API configuration
-        zendesk_domain = os.getenv("ZENDESK_DOMAIN")
-        zendesk_email = os.getenv("ZENDESK_EMAIL")
-        zendesk_api_token = os.getenv("ZENDESK_API_KEY")
+        # Use the reusable function
+        result = await update_zendesk_ticket(ticket_id, update_data, "categorized")
         
-        if not all([zendesk_domain, zendesk_email, zendesk_api_token]):
-            return {
-                "status": "error",
-                "message": "Missing Zendesk configuration. Please set ZENDESK_DOMAIN, ZENDESK_EMAIL, and ZENDESK_API_TOKEN environment variables."
-            }
-        
-        #Prepare the authorization header
-        auth_header = base64.b64encode(f"{zendesk_email}/token:{zendesk_api_token}".encode()).decode()
-        
-        # Zendesk API headers
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Basic {auth_header}"
-        }
-        
-        # Zendesk API URL for updating ticket
-        zendesk_url = f"https://{zendesk_domain}/api/v2/tickets/{ticket_id}.json"
-        
-        # Make the API call to update the ticket
-        response = requests.put(
-            zendesk_url,
-            headers=headers,
-            json=update_data,
-            timeout=30
-        )
-        
-        if response.status_code == 200:
-            logging.info(f"Successfully updated Zendesk ticket {ticket_id} with category '{category}'")
-            return {
-                "status": "success",
-                "message": f"Ticket {ticket_id} updated successfully",
-                "category": category,
-                "confidence": confidence,
-                "zendesk_response": response.json()
-            }
-        else:
-            logging.error(f"Failed to update Zendesk ticket {ticket_id}: {response.status_code} - {response.text}")
-            return {
-                "status": "error",
-                "message": f"Failed to update Zendesk ticket: {response.status_code}",
-                "zendesk_response": response.text
-            }
+        # Add additional context to the result
+        if result["status"] == "success":
+            result["category"] = category
+            result["confidence"] = confidence
+            
+        return result
             
     except Exception as e:
-        logging.error(f"Error updating Zendesk ticket {ticket_id}: {str(e)}")
+        logging.error(f"Error updating Zendesk ticket {ticket_id} with tags: {str(e)}")
         return {
             "status": "error",
-            "message": f"Exception occurred while updating ticket: {str(e)}"
+            "message": f"Exception occurred while updating ticket tags: {str(e)}"
         }
 
 async def update_zendesk_ticket_with_analysis(analysis: dict, ticket_id: str) -> dict:
@@ -130,57 +158,14 @@ async def update_zendesk_ticket_with_analysis(analysis: dict, ticket_id: str) ->
             }
         }
         
-        # Zendesk API configuration
-        zendesk_domain = os.getenv("ZENDESK_DOMAIN")
-        zendesk_email = os.getenv("ZENDESK_EMAIL")
-        zendesk_api_token = os.getenv("ZENDESK_API_KEY")
-        
-        if not all([zendesk_domain, zendesk_email, zendesk_api_token]):
-            return {
-                "status": "error",
-                "message": "Missing Zendesk configuration. Please set ZENDESK_DOMAIN, ZENDESK_EMAIL, and ZENDESK_API_TOKEN environment variables."
-            }
-        
-        #Prepare the authorization header
-        auth_header = base64.b64encode(f"{zendesk_email}/token:{zendesk_api_token}".encode()).decode()
-        
-        # Zendesk API headers
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Basic {auth_header}"
-        }
-        
-        # Zendesk API URL for updating ticket
-        zendesk_url = f"https://{zendesk_domain}/api/v2/tickets/{ticket_id}.json"
-        
-        # Make the API call to update the ticket
-        response = requests.put(
-            zendesk_url,
-            headers=headers,
-            json=update_data,
-            timeout=30
-        )
-        
-        if response.status_code == 200:
-            logging.info(f"Successfully updated Zendesk ticket {ticket_id} with analysis")
-            return {
-                "status": "success",
-                "message": f"Ticket {ticket_id} updated successfully with analysis",
-                "zendesk_response": response.json()
-            }
-        else:
-            logging.error(f"Failed to update Zendesk ticket {ticket_id}: {response.status_code} - {response.text}")
-            return {
-                "status": "error",
-                "message": f"Failed to update Zendesk ticket: {response.status_code}",
-                "zendesk_response": response.text
-            }
+        # Use the reusable function
+        return await update_zendesk_ticket(ticket_id, update_data, "analyzed")
             
     except Exception as e:
-        logging.error(f"Error updating Zendesk ticket {ticket_id}: {str(e)}")
+        logging.error(f"Error updating Zendesk ticket {ticket_id} with analysis: {str(e)}")
         return {
             "status": "error",
-            "message": f"Exception occurred while updating ticket: {str(e)}"
+            "message": f"Exception occurred while updating ticket with analysis: {str(e)}"
         }
 
 def format_analysis_for_comment(analysis: dict) -> str:

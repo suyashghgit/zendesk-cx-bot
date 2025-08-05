@@ -3,6 +3,22 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import json
 from datetime import datetime
+import uuid
+import logging
+import os
+
+# Create logs directory if it doesn't exist
+os.makedirs("logs", exist_ok=True)
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('logs/webhook_requests.log'),
+        logging.StreamHandler()
+    ]
+)
 
 # Create FastAPI app instance
 app = FastAPI(
@@ -33,6 +49,9 @@ async def health_check():
 @app.post("/ticketCreatedWebhook")
 async def ticket_created_webhook(request: Request):
     """Webhook endpoint to receive ticket creation events"""
+    # Generate unique UUID for this request
+    request_id = str(uuid.uuid4())
+    
     try:
         # Get the raw request body
         body = await request.body()
@@ -48,13 +67,26 @@ async def ticket_created_webhook(request: Request):
             data = body.decode('utf-8')
             data_type = "TEXT"
         
-        # Log everything
+        # Create log entry with UUID
+        log_entry = {
+            "request_id": request_id,
+            "timestamp": datetime.now().isoformat(),
+            "endpoint": "/ticketCreatedWebhook",
+            "method": "POST",
+            "headers": headers,
+            "body_type": data_type,
+            "body": data if data_type == "TEXT" else data,
+            "status": "success"
+        }
+        
+        # Log to file
+        logging.info(f"Request {request_id}: Webhook received successfully")
+        logging.info(f"Request {request_id}: Body Type - {data_type}")
+        logging.info(f"Request {request_id}: Body - {json.dumps(data, indent=2) if data_type == 'JSON' else data}")        
+        # Also print to console for immediate visibility
         print(f"\n{'='*50}")
-        print(f"[{datetime.now()}] WEBHOOK RECEIVED")
+        print(f"[{datetime.now()}] WEBHOOK RECEIVED - Request ID: {request_id}")
         print(f"{'='*50}")
-        print(f"Headers:")
-        for key, value in headers.items():
-            print(f"  {key}: {value}")
         print(f"\nBody Type: {data_type}")
         print(f"Body:")
         print(json.dumps(data, indent=2) if data_type == "JSON" else data)
@@ -63,15 +95,20 @@ async def ticket_created_webhook(request: Request):
         return {
             "status": "success",
             "message": "Webhook logged successfully",
+            "request_id": request_id,
             "timestamp": datetime.now().isoformat(),
             "data_type": data_type
         }
         
     except Exception as e:
-        print(f"[{datetime.now()}] Error processing webhook: {str(e)}")
+        error_msg = f"Error processing webhook: {str(e)}"
+        logging.error(f"Request {request_id}: {error_msg}")
+        print(f"[{datetime.now()}] Request {request_id}: Error processing webhook: {str(e)}")
+        
         return {
             "status": "error",
-            "message": f"Error processing webhook: {str(e)}",
+            "message": error_msg,
+            "request_id": request_id,
             "timestamp": datetime.now().isoformat()
         }
 

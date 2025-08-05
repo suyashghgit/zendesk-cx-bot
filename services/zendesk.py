@@ -6,25 +6,36 @@ import requests
 import logging
 import json
 from typing import Dict, List, Any
+from app.config import settings
 
 class ZendeskService:
     """Service class for handling all Zendesk API operations."""
     
     def __init__(self):
-        self.zendesk_domain = os.getenv("ZENDESK_DOMAIN")
-        self.zendesk_email = os.getenv("ZENDESK_EMAIL")
-        self.zendesk_api_token = os.getenv("ZENDESK_API_KEY")
-        
+        self.zendesk_domain = settings.zendesk_domain
+        self.zendesk_email = settings.zendesk_email
+        self.zendesk_api_token = settings.zendesk_api_key
+        self.headers = None
+    
+    def _get_headers(self):
+        """Lazy initialization of Zendesk headers"""
         if not all([self.zendesk_domain, self.zendesk_email, self.zendesk_api_token]):
-            raise ValueError("Missing Zendesk configuration. Please set ZENDESK_DOMAIN, ZENDESK_EMAIL, and ZENDESK_API_TOKEN environment variables.")
+            raise ValueError("Missing Zendesk configuration. Please set zendesk_domain, zendesk_email, and zendesk_api_key environment variables.")
         
-        # Prepare the authorization header
-        auth_header = base64.b64encode(f"{self.zendesk_email}/token:{self.zendesk_api_token}".encode()).decode()
+        if self.headers is None:
+            # Prepare the authorization header
+            auth_string = f"{self.zendesk_email}/token:{self.zendesk_api_token}"
+            auth_header = base64.b64encode(auth_string.encode()).decode()
+            
+            self.headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Basic {auth_header}"
+            }
+            
+            # Log the configuration (without exposing sensitive data)
+            logging.info(f"Zendesk configuration loaded - Domain: {self.zendesk_domain}, Email: {self.zendesk_email}")
         
-        self.headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Basic {auth_header}"
-        }
+        return self.headers
     
     async def update_ticket(self, ticket_id: str, update_data: dict, operation_description: str = "update") -> dict:
         """
@@ -43,9 +54,10 @@ class ZendeskService:
             zendesk_url = f"https://{self.zendesk_domain}/api/v2/tickets/{ticket_id}.json"
             
             # Make the API call to update the ticket
+            headers = self._get_headers()
             response = requests.put(
                 zendesk_url,
-                headers=self.headers,
+                headers=headers,
                 json=update_data,
                 timeout=30
             )
@@ -72,29 +84,29 @@ class ZendeskService:
                 "message": f"Exception occurred while {operation_description} ticket: {str(e)}"
             }
     
-    async def update_ticket_tags(self, huggingface_response: dict, ticket_id: str) -> dict:
+    async def update_ticket_tags(self, categorization_response: dict, ticket_id: str) -> dict:
         """
-        Update a Zendesk ticket with tags from HuggingFace analysis.
+        Update a Zendesk ticket with tags from Azure OpenAI categorization.
         
         Args:
-            huggingface_response (dict): The response from HuggingFace API containing category and confidence
+            categorization_response (dict): The response from Azure OpenAI API containing category and confidence
             ticket_id (str): The Zendesk ticket ID to update
         
         Returns:
             dict: Response from Zendesk API with status and details
         """
         try:
-            # Extract category and confidence from HuggingFace response
-            if huggingface_response.get("status") == "success":
-                category = huggingface_response.get("category", "unknown")
-                confidence = huggingface_response.get("confidence", 0.0)
-                model_used = huggingface_response.get("model_used", "unknown")
+            # Extract category and confidence from Azure OpenAI response
+            if categorization_response.get("status") == "success":
+                category = categorization_response.get("category", "unknown")
+                confidence = categorization_response.get("confidence", 0.0)
+                model_used = categorization_response.get("model_used", "unknown")
             else:
-                logging.error(f"Invalid HuggingFace response: {huggingface_response}")
+                logging.error(f"Invalid Azure OpenAI response: {categorization_response}")
                 return {
                     "status": "error",
-                    "message": "Invalid HuggingFace response",
-                    "huggingface_response": huggingface_response
+                    "message": "Invalid Azure OpenAI response",
+                    "categorization_response": categorization_response
                 }
             
             # Prepare the update data for Zendesk
@@ -102,7 +114,7 @@ class ZendeskService:
                 "ticket": {
                     "tags": [f"auto_categorized_{category}"],
                     "comment": {
-                        "body": f"Ticket automatically categorized as '{category}' with {confidence:.2%} confidence using {model_used} model.",
+                        "body": f"Ticket automatically categorized as '{category}' with {confidence:.2%}.",
                         "public": False
                     }
                 }
@@ -253,9 +265,13 @@ class ZendeskService:
             comments_url = f"https://{self.zendesk_domain}/api/v2/tickets/{ticket_id}/comments.json"
             
             # Make the GET request to fetch comments
+            headers = self._get_headers()
+            logging.info(f"Making request to: {comments_url}")
+            logging.info(f"Headers: {headers}")
+            
             response = requests.get(
                 comments_url,
-                headers=self.headers,
+                headers=headers,
                 timeout=30
             )
             
@@ -278,6 +294,8 @@ class ZendeskService:
                 return public_comments
             else:
                 logging.error(f"Failed to fetch comments for Zendesk ticket {ticket_id}: {response.status_code} - {response.text}")
+                logging.error(f"Request URL: {comments_url}")
+                logging.error(f"Response headers: {dict(response.headers)}")
                 return {
                     "status": "error",
                     "message": f"Failed to fetch comments: {response.status_code}",

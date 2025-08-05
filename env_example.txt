@@ -1,0 +1,12 @@
+# Zendesk Configuration
+# Replace these values with your actual Zendesk credentials
+zendesk_domain=self-43692.zendesk.com
+zendesk_email=skghimire22@gmail.com
+zendesk_api_key=ygg1TVJBFDDbSHw1gx5igQS0zD2wQfduPuiV81Dh
+
+# Azure OpenAI Configuration
+azure_openai_api_key=your_azure_openai_api_key_here
+azure_openai_endpoint=your_azure_openai_endpoint_here
+azure_openai_deployment=your_azure_openai_deployment_here
+azure_openai_model=your_azure_openai_model_here
+azure_openai_api_version=2024-02-15-preview 

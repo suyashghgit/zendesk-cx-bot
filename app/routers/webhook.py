@@ -5,13 +5,10 @@ import json, uuid, logging
 from datetime import datetime
 from jinja2 import Environment, FileSystemLoader
 
-from services.huggingface import send_to_huggingface  # Import helper
-from services.azure_openai import call_azure_llm_with_comments  # Import Azure OpenAI service
+from services.azure_openai import azure_openai_service  # Import Azure OpenAI services
 from services.zendesk import zendesk_service  # Import Zendesk service
 
 router = APIRouter()
-
-
 
 @router.post("/ticketCreatedWebhook")
 async def ticket_created_webhook(request: Request):
@@ -66,17 +63,24 @@ async def ticket_created_webhook(request: Request):
         rendered_template = template.render(subject=subject, description=description)
         logging.info(f"Request {request_id}: Template rendered successfully")
 
-        # HuggingFace API call
-        logging.info(f"Request {request_id}: Sending to HuggingFace API")
-        huggingface_response = await send_to_huggingface(rendered_template)
-        logging.info(f"Request {request_id}: HuggingFace API response received")
-        logging.info(f"Request {request_id}: HuggingFace Response - {huggingface_response}")
+        # Azure OpenAI API call for ticket categorization
+        logging.info(f"Request {request_id}: Sending to Azure OpenAI API for categorization")
+        try:
+            categorization_response = await azure_openai_service.categorize_ticket(subject, description)
+            logging.info(f"Request {request_id}: Azure OpenAI API response received")
+            logging.info(f"Request {request_id}: Azure OpenAI Response - {categorization_response}")
+        except Exception as e:
+            logging.error(f"Request {request_id}: Error calling Azure OpenAI - {str(e)}")
+            categorization_response = {
+                "status": "error",
+                "message": f"Failed to categorize ticket: {str(e)}"
+            }
 
         # Update Zendesk ticket if we have a ticket ID
         zendesk_update_result = None
         if ticket_id:
             logging.info(f"Request {request_id}: Updating Zendesk ticket {ticket_id}")
-            zendesk_update_result = await zendesk_service.update_ticket_tags(huggingface_response, ticket_id)
+            zendesk_update_result = await zendesk_service.update_ticket_tags(categorization_response, ticket_id)
             logging.info(f"Request {request_id}: Zendesk update result - {zendesk_update_result}")
         else:
             logging.warning(f"Request {request_id}: No ticket ID found, skipping Zendesk update")
@@ -89,7 +93,7 @@ async def ticket_created_webhook(request: Request):
             "request_id": request_id,
             "timestamp": datetime.now().isoformat(),
             "data_type": data_type,
-            "huggingface_response": huggingface_response,
+            "categorization_response": categorization_response,
             "zendesk_update_result": zendesk_update_result
         }
 
@@ -138,6 +142,9 @@ async def ticket_status_changed_webhook(request: Request):
                 
                 # Update ticket summary when status is SOLVED
                 ticket_id = detail.get("id", "")
+                llm_response = None
+                analysis_update_result = None
+                
                 if ticket_id:
                     logging.info(f"Request {request_id}: Updating ticket summary for ticket {ticket_id}")
                     ticket_public_comments = await zendesk_service.extract_ticket_comments(ticket_id, detail)
@@ -145,8 +152,15 @@ async def ticket_status_changed_webhook(request: Request):
                     # Call Azure LLM with the public comments
                     if isinstance(ticket_public_comments, list) and len(ticket_public_comments) > 0:
                         logging.info(f"Request {request_id}: Calling Azure LLM with {len(ticket_public_comments)} comments")
-                        llm_response = await call_azure_llm_with_comments(ticket_public_comments)
-                        logging.info(f"Request {request_id}: LLM response - {llm_response}")
+                        try:
+                            llm_response = await azure_openai_service.analyze_ticket_comments(ticket_public_comments)
+                            logging.info(f"Request {request_id}: LLM response - {llm_response}")
+                        except Exception as e:
+                            logging.error(f"Request {request_id}: Error calling Azure LLM - {str(e)}")
+                            llm_response = {
+                                "status": "error",
+                                "message": f"Failed to analyze ticket comments: {str(e)}"
+                            }
                         
                         # Extract and log the analysis from generated content
                         if llm_response and llm_response.get("status") == "success":
@@ -163,20 +177,13 @@ async def ticket_status_changed_webhook(request: Request):
                                     logging.info(f"Request {request_id}: Analysis update result - {analysis_update_result}")
                                 else:
                                     logging.warning(f"Request {request_id}: No analysis data found to update ticket")
-                                    analysis_update_result = None
                                     
                             except (json.JSONDecodeError, KeyError) as e:
                                 logging.error(f"Request {request_id}: Error extracting analysis from LLM response - {str(e)}")
-                                analysis_update_result = None
                     else:
                         logging.warning(f"Request {request_id}: No public comments found or error occurred")
-                        llm_response = None
-                        analysis_update_result = None
                 else:
                     logging.warning(f"Request {request_id}: No ticket ID found, skipping summary update")
-                    ticket_public_comments = None
-                    llm_response = None
-                    analysis_update_result = None
                 
                 return {
                     "status": "success",

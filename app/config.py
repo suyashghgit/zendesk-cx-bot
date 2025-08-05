@@ -18,11 +18,14 @@ class Settings(BaseSettings):
     cors_allow_headers: List[str] = ["*"]
 
     # API Keys and External Services
-    huggingface_api_key: str = ""
     zendesk_api_key: str = ""
     zendesk_domain: str = ""
     zendesk_email: str = ""
     azure_openai_api_key: str = ""
+    azure_openai_endpoint: str = ""
+    azure_openai_deployment: str = ""
+    azure_openai_model: str = ""
+    azure_openai_api_version: str = ""
     
     class Config:
         env_file = ".env"

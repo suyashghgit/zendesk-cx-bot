@@ -6,7 +6,7 @@ A FastAPI application that processes Zendesk webhook events and categorizes tick
 
 - Receives Zendesk webhook events for ticket creation
 - Extracts subject and description from ticket data
-- Uses Hugging Face's BART-large-MNLI model for ticket categorization
+- Uses Azure OpenAI for ticket categorization and analysis
 - Logs all requests with detailed information
 - Provides REST API endpoints for health checks
 
@@ -20,20 +20,29 @@ pip install -r requirements.txt
 
 ### 2. Environment Variables
 
-Create a `.env` file in the root directory with your Hugging Face API key:
+Create a `.env` file in the root directory with your Azure OpenAI API key:
 
 ```env
-HUGGINGFACE_API_KEY=your_huggingface_api_key_here
+# Azure OpenAI Configuration
+azure_openai_api_key=your_azure_openai_api_key_here
+azure_openai_endpoint=https://your-resource.cognitiveservices.azure.com/
+azure_openai_deployment=your-deployment-name
+azure_openai_model=your-model-name
+azure_openai_api_version=2024-12-01-preview
+
+# Zendesk Configuration (optional)
+zendesk_domain=your-zendesk-domain
+zendesk_email=your-zendesk-email
+zendesk_api_key=your-zendesk-api-key
 ```
 
-### 3. Get Hugging Face API Key
+### 3. Get Azure OpenAI API Key
 
-1. Go to [Hugging Face](https://huggingface.co/)
-2. Create an account or sign in
-3. Go to your profile settings
-4. Navigate to "Access Tokens"
-5. Create a new token with "read" permissions
-6. Copy the token and add it to your `.env` file
+1. Go to [Azure Portal](https://portal.azure.com/)
+2. Navigate to your Azure OpenAI resource
+3. Go to "Keys and Endpoint" section
+4. Copy the API key and endpoint URL
+5. Add them to your `.env` file
 
 ### 4. Run the Application
 
@@ -78,23 +87,24 @@ Each request gets a unique UUID for tracking and includes:
 - Request headers and body
 - Extracted ticket data
 - Rendered template
-- Hugging Face API response
+- Azure OpenAI API response
 - Categorization results
 
 ## Model Information
 
-This application uses the `facebook/bart-large-mnli` model from Hugging Face, which is:
-- Free to use (with API rate limits)
-- Optimized for text classification tasks
-- Provides confidence scores for predictions
-- Supports zero-shot classification
+This application uses Azure OpenAI for:
+- Ticket categorization with confidence scores
+- Support quality analysis and insights
+- Structured JSON responses for easy integration
+- Customizable prompts for different use cases
 
 ## Configuration
 
-The application uses the following Hugging Face model:
-- **Model**: `facebook/bart-large-mnli`
-- **Task**: Zero-shot text classification
-- **API Endpoint**: `https://api-inference.huggingface.co/models/facebook/bart-large-mnli`
+The application uses Azure OpenAI with the following configuration:
+- **Service**: Azure OpenAI
+- **Tasks**: Text categorization and analysis
+- **Response Format**: Structured JSON
+- **Customizable**: Prompts and parameters can be adjusted
 
 ## Development
 

@@ -12,7 +12,7 @@ from services.huggingface import send_to_huggingface  # Import helper
 
 router = APIRouter()
 
-async def update_zendesk_ticket(huggingface_response: dict, ticket_id: str) -> dict:
+async def update_zendesk_ticket_tags(huggingface_response: dict, ticket_id: str) -> dict:
     """
     Update a Zendesk ticket with the categorization results from HuggingFace.
     
@@ -40,7 +40,7 @@ async def update_zendesk_ticket(huggingface_response: dict, ticket_id: str) -> d
         # Prepare the update data for Zendesk
         update_data = {
             "ticket": {
-                "tags": [f"ai_categorized_{category}"],
+                "tags": [f"auto_categorized_{category}"],
                 "comment": {
                     "body": f"Ticket automatically categorized as '{category}' with {confidence:.2%} confidence using {model_used} model.",
                     "public": False
@@ -101,6 +101,81 @@ async def update_zendesk_ticket(huggingface_response: dict, ticket_id: str) -> d
         return {
             "status": "error",
             "message": f"Exception occurred while updating ticket: {str(e)}"
+        }
+
+async def extract_ticket_comments(ticket_id: str, ticket_data: dict) -> dict:
+    """
+    Fetch comments from a Zendesk ticket and extract only public comments.
+    
+    Args:
+        ticket_id (str): The Zendesk ticket ID to fetch comments from
+        ticket_data (dict): The ticket data containing subject, description, etc.
+    
+    Returns:
+        dict: Response containing public comments from the ticket
+    """
+    try:
+        # Zendesk API configuration
+        zendesk_domain = os.getenv("ZENDESK_DOMAIN")
+        zendesk_email = os.getenv("ZENDESK_EMAIL")
+        zendesk_api_token = os.getenv("ZENDESK_API_KEY")
+        
+        if not all([zendesk_domain, zendesk_email, zendesk_api_token]):
+            return {
+                "status": "error",
+                "message": "Missing Zendesk configuration. Please set ZENDESK_DOMAIN, ZENDESK_EMAIL, and ZENDESK_API_TOKEN environment variables."
+            }
+        
+        # Prepare the authorization header
+        auth_header = base64.b64encode(f"{zendesk_email}/token:{zendesk_api_token}".encode()).decode()
+        
+        # Zendesk API headers
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Basic {auth_header}"
+        }
+        
+        # Zendesk API URL for fetching comments
+        comments_url = f"https://{zendesk_domain}/api/v2/tickets/{ticket_id}/comments.json"
+        
+        # Make the GET request to fetch comments
+        response = requests.get(
+            comments_url,
+            headers=headers,
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            comments_data = response.json()
+            comments = comments_data.get("comments", [])
+            
+            # Extract only public comments
+            public_comments = [comment for comment in comments if comment.get("public", False)]
+            
+            logging.info(f"Successfully fetched comments for Zendesk ticket {ticket_id}. Found {len(public_comments)} public comments out of {len(comments)} total comments.")
+            
+            return {
+                "status": "success",
+                "message": f"Successfully fetched comments for ticket {ticket_id}",
+                "ticket_id": ticket_id,
+                "total_comments": len(comments),
+                "public_comments": public_comments,
+                "public_comments_count": len(public_comments),
+                "all_comments_response": comments_data
+            }
+        else:
+            logging.error(f"Failed to fetch comments for Zendesk ticket {ticket_id}: {response.status_code} - {response.text}")
+            return {
+                "status": "error",
+                "message": f"Failed to fetch comments: {response.status_code}",
+                "zendesk_response": response.text
+            }
+            
+    except Exception as e:
+        logging.error(f"Error fetching comments for Zendesk ticket {ticket_id}: {str(e)}")
+        return {
+            "status": "error",
+            "message": f"Exception occurred while fetching comments: {str(e)}"
         }
 
 @router.post("/ticketCreatedWebhook")
@@ -166,7 +241,7 @@ async def ticket_created_webhook(request: Request):
         zendesk_update_result = None
         if ticket_id:
             logging.info(f"Request {request_id}: Updating Zendesk ticket {ticket_id}")
-            zendesk_update_result = await update_zendesk_ticket(huggingface_response, ticket_id)
+            zendesk_update_result = await update_zendesk_ticket_tags(huggingface_response, ticket_id)
             logging.info(f"Request {request_id}: Zendesk update result - {zendesk_update_result}")
         else:
             logging.warning(f"Request {request_id}: No ticket ID found, skipping Zendesk update")
@@ -225,6 +300,16 @@ async def ticket_status_changed_webhook(request: Request):
             if current_status == "SOLVED" and ticket_status == "SOLVED":
                 print(f"Ticket {detail.get('id', 'unknown')} is SOLVED!")
                 logging.info(f"Request {request_id}: Ticket is SOLVED - {detail.get('id', 'unknown')}")
+                
+                # Update ticket summary when status is SOLVED
+                ticket_id = detail.get("id", "")
+                if ticket_id:
+                    logging.info(f"Request {request_id}: Updating ticket summary for ticket {ticket_id}")
+                    summary_update_result = await extract_ticket_comments(ticket_id, detail)
+                    logging.info(f"Request {request_id}: Summary update result - {summary_update_result}")
+                else:
+                    logging.warning(f"Request {request_id}: No ticket ID found, skipping summary update")
+                    summary_update_result = None
                 
                 return {
                     "status": "success",

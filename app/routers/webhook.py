@@ -4,10 +4,104 @@ from fastapi import APIRouter, Request
 import json, uuid, logging
 from datetime import datetime
 from jinja2 import Environment, FileSystemLoader
+import requests
+import os
+import base64
 
 from services.huggingface import send_to_huggingface  # Import helper
 
 router = APIRouter()
+
+async def update_zendesk_ticket(huggingface_response: dict, ticket_id: str) -> dict:
+    """
+    Update a Zendesk ticket with the categorization results from HuggingFace.
+    
+    Args:
+        huggingface_response (dict): The response from HuggingFace API containing category and confidence
+        ticket_id (str): The Zendesk ticket ID to update
+    
+    Returns:
+        dict: Response from Zendesk API with status and details
+    """
+    try:
+        # Extract category and confidence from HuggingFace response
+        if huggingface_response.get("status") == "success":
+            category = huggingface_response.get("category", "unknown")
+            confidence = huggingface_response.get("confidence", 0.0)
+            model_used = huggingface_response.get("model_used", "unknown")
+        else:
+            logging.error(f"Invalid HuggingFace response: {huggingface_response}")
+            return {
+                "status": "error",
+                "message": "Invalid HuggingFace response",
+                "huggingface_response": huggingface_response
+            }
+        
+        # Prepare the update data for Zendesk
+        update_data = {
+            "ticket": {
+                "tags": [f"ai_categorized_{category}"],
+                "comment": {
+                    "body": f"Ticket automatically categorized as '{category}' with {confidence:.2%} confidence using {model_used} model.",
+                    "public": False
+                }
+            }
+        }
+        
+        # Zendesk API configuration
+        zendesk_domain = os.getenv("ZENDESK_DOMAIN")
+        zendesk_email = os.getenv("ZENDESK_EMAIL")
+        zendesk_api_token = os.getenv("ZENDESK_API_KEY")
+        
+        if not all([zendesk_domain, zendesk_email, zendesk_api_token]):
+            return {
+                "status": "error",
+                "message": "Missing Zendesk configuration. Please set ZENDESK_DOMAIN, ZENDESK_EMAIL, and ZENDESK_API_TOKEN environment variables."
+            }
+        
+        #Prepare the authorization header
+        auth_header = base64.b64encode(f"{zendesk_email}/token:{zendesk_api_token}".encode()).decode()
+        
+        # Zendesk API headers
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Basic {auth_header}"
+        }
+        
+        # Zendesk API URL for updating ticket
+        zendesk_url = f"https://{zendesk_domain}/api/v2/tickets/{ticket_id}.json"
+        
+        # Make the API call to update the ticket
+        response = requests.put(
+            zendesk_url,
+            headers=headers,
+            json=update_data,
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            logging.info(f"Successfully updated Zendesk ticket {ticket_id} with category '{category}'")
+            return {
+                "status": "success",
+                "message": f"Ticket {ticket_id} updated successfully",
+                "category": category,
+                "confidence": confidence,
+                "zendesk_response": response.json()
+            }
+        else:
+            logging.error(f"Failed to update Zendesk ticket {ticket_id}: {response.status_code} - {response.text}")
+            return {
+                "status": "error",
+                "message": f"Failed to update Zendesk ticket: {response.status_code}",
+                "zendesk_response": response.text
+            }
+            
+    except Exception as e:
+        logging.error(f"Error updating Zendesk ticket {ticket_id}: {str(e)}")
+        return {
+            "status": "error",
+            "message": f"Exception occurred while updating ticket: {str(e)}"
+        }
 
 @router.post("/ticketCreatedWebhook")
 async def ticket_created_webhook(request: Request):
@@ -38,6 +132,7 @@ async def ticket_created_webhook(request: Request):
 
         subject = ""
         description = ""
+        ticket_id = ""
 
         if data_type == "JSON" and isinstance(data, dict):
             logging.info(f"Request {request_id}: Processing JSON data")
@@ -45,8 +140,10 @@ async def ticket_created_webhook(request: Request):
                 detail = data["detail"]
                 subject = detail.get("subject", "")
                 description = detail.get("description", "")
+                ticket_id = detail.get("id", "")  # Extract ticket ID
                 logging.info(f"Request {request_id}: Extracted subject - {subject[:50]}...")
                 logging.info(f"Request {request_id}: Extracted description - {description[:100]}...")
+                logging.info(f"Request {request_id}: Extracted ticket ID - {ticket_id}")
             else:
                 logging.warning(f"Request {request_id}: No 'detail' field found in JSON data")
         else:
@@ -65,6 +162,15 @@ async def ticket_created_webhook(request: Request):
         logging.info(f"Request {request_id}: HuggingFace API response received")
         logging.info(f"Request {request_id}: HuggingFace Response - {huggingface_response}")
 
+        # Update Zendesk ticket if we have a ticket ID
+        zendesk_update_result = None
+        if ticket_id:
+            logging.info(f"Request {request_id}: Updating Zendesk ticket {ticket_id}")
+            zendesk_update_result = await update_zendesk_ticket(huggingface_response, ticket_id)
+            logging.info(f"Request {request_id}: Zendesk update result - {zendesk_update_result}")
+        else:
+            logging.warning(f"Request {request_id}: No ticket ID found, skipping Zendesk update")
+
         # Success response
         logging.info(f"Request {request_id}: Webhook processed successfully")
         return {
@@ -73,7 +179,8 @@ async def ticket_created_webhook(request: Request):
             "request_id": request_id,
             "timestamp": datetime.now().isoformat(),
             "data_type": data_type,
-            "huggingface_response": huggingface_response
+            "huggingface_response": huggingface_response,
+            "zendesk_update_result": zendesk_update_result
         }
 
     except Exception as e:

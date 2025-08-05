@@ -1,2 +1,0 @@
-# zendesk-cx-bot
-

@@ -1,8 +1,5 @@
-# app/routers/webhook.py
-
 from fastapi import APIRouter, Request
 import logging
-from jinja2 import Environment, FileSystemLoader
 
 from app.utils import (
     generate_request_id,
@@ -21,6 +18,7 @@ from services.zendesk import zendesk_service
 
 router = APIRouter()
 
+# Ticket created webhook
 @router.post("/ticketCreatedWebhook")
 async def ticket_created_webhook(request: Request):
     request_id = generate_request_id()
@@ -39,13 +37,6 @@ async def ticket_created_webhook(request: Request):
             subject, description, ticket_id = extract_ticket_data(data, request_id)
         else:
             logging.info(f"Request {request_id}: Processing text data")
-
-        # Template processing
-        logging.info(f"Request {request_id}: Loading Jinja2 template")
-        env = Environment(loader=FileSystemLoader("templates"))
-        template = env.get_template("ticket_categorizer.jinja")
-        rendered_template = template.render(subject=subject, description=description)
-        logging.info(f"Request {request_id}: Template rendered successfully")
 
         # Process ticket categorization
         categorization_response = await process_ticket_categorization(subject, description, request_id)
@@ -71,6 +62,7 @@ async def ticket_created_webhook(request: Request):
     except Exception as e:
         return create_error_response(request_id, e)
 
+# Ticket status changed webhook
 @router.post("/ticketStatusChangedWebhook")
 async def ticket_status_changed_webhook(request: Request):
     request_id = generate_request_id()

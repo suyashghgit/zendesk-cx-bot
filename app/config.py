@@ -3,7 +3,7 @@ from typing import List
 
 class Settings(BaseSettings):
     # Application settings
-    app_name: str = "FastAPI Boilerplate"
+    app_name: str = "Zendesk AI Assistant"
     app_version: str = "1.0.0"
     debug: bool = True
     

@@ -4,11 +4,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import logging, os
 
-from app.config import settings  # Import settings
+from app.config import settings  # import settings
 
-from app.routers import webhook  # import your router
+from app.routers import webhook  # import  router
 
-# Create logs directory
+# Create logs directory if it doesn't exist
 os.makedirs("logs", exist_ok=True)
 
 logging.basicConfig(
@@ -26,7 +26,7 @@ app = FastAPI(
     version=settings.app_version
 )
 
-
+# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
@@ -35,10 +35,12 @@ app.add_middleware(
     allow_headers=settings.cors_allow_headers,
 )
 
+# Root endpoint
 @app.get("/")
 async def root():
-    return {"message": "Welcome to FastAPI Boilerplate!"}
+    return {"message": "Welcome to Zendesk AI Assistant!"}
 
+# Health check endpoint
 @app.get("/health")
 async def health_check():
     return {"status": "healthy", "message": "Service is running"}

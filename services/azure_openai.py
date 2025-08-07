@@ -33,7 +33,7 @@ class AzureOpenAIService:
         
         if self.client is None:
             try:
-                http_client = httpx.AsyncClient(proxies=None)
+                http_client = httpx.Client()
                 # Updated client initialization to match documentation
                 self.client = AzureOpenAI(
                     api_version=self.api_version,

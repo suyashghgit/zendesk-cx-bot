@@ -10,6 +10,8 @@ from app.routers import webhook, twilio  # import routers
 
 # Create logs directory if it doesn't exist
 os.makedirs("logs", exist_ok=True)
+print("HTTP_PROXY:", os.environ.get("HTTP_PROXY"))
+print("HTTPS_PROXY:", os.environ.get("HTTPS_PROXY"))
 
 logging.basicConfig(
     level=logging.INFO,

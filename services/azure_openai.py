@@ -5,6 +5,7 @@ from typing import Dict, List, Optional, Any
 from openai import AzureOpenAI
 from dotenv import load_dotenv
 from app.config import settings
+import httpx 
 
 # Load environment variables
 load_dotenv()
@@ -32,11 +33,13 @@ class AzureOpenAIService:
         
         if self.client is None:
             try:
+                http_client = httpx.Client(proxies=None)
                 # Updated client initialization to match documentation
                 self.client = AzureOpenAI(
                     api_version=self.api_version,
                     azure_endpoint=self.endpoint,
                     api_key=self.subscription_key,
+                    http_client=http_client
                 )
                 logging.info(f"Azure OpenAI client initialized successfully")
             except Exception as e:

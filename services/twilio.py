@@ -40,13 +40,13 @@ class TwilioService:
         Returns:
             Tuple[bool, str]: (is_valid, reason_or_suggestion)
         """
-        if not message_body or not message_body.strip():
-            return False, "Message is empty"
         
         # Remove whitespace and check length
         clean_message = message_body.strip()
-        if len(clean_message) < 10:
-            return False, "Please provide more details about your issue."
+        
+        # Check if message is empty after stripping
+        if not clean_message:
+            return False, "Message is empty or contains only whitespace."
         
         # Check for generic/greeting messages
         generic_patterns = [
@@ -58,17 +58,8 @@ class TwilioService:
         for pattern in generic_patterns:
             if re.match(pattern, clean_message.lower()):
                 return False, "Please provide more details about your issue."
-        
-        # Check for actionable content (contains issue-related keywords)
-        issue_keywords = [
-            'problem', 'issue', 'error', 'bug', 'broken', 'not working', 'can\'t', 'cannot',
-            'failed', 'failure', 'trouble', 'difficulty', 'question', 'inquiry', 'request',
-            'need', 'want', 'looking for', 'searching for', 'trying to', 'attempting to'
-        ]
-        
-        has_issue_keywords = any(keyword in clean_message.lower() for keyword in issue_keywords)
-        
-        if not has_issue_keywords and len(clean_message) < 20:
+                
+        if len(clean_message) < 20:
             return False, "Please describe your issue or request. For example: 'I can't log into my account' or 'Need help with billing'"
         
         return True, "Content is valid"

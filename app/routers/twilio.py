@@ -56,11 +56,9 @@ async def twilio_whatsapp_webhook(
     try:
         # Clean the phone number (remove whatsapp: prefix)
         clean_from = From.replace("whatsapp:", "") if From.startswith("whatsapp:") else From
-        clean_to = To.replace("whatsapp:", "") if To.startswith("whatsapp:") else To
         
         # Log the incoming WhatsApp message
-        logging.info(f"Request {request_id}: Received WhatsApp message from {clean_from} to {clean_to}")
-        logging.info(f"Request {request_id}: Message SID: {MessageSid}")
+        logging.info(f"Request {request_id}: Received WhatsApp message from {clean_from}")
         logging.info(f"Request {request_id}: Message body: {Body}")
         
         # Process the WhatsApp message and create ticket
@@ -73,9 +71,7 @@ async def twilio_whatsapp_webhook(
             subject = ticket_result.get("subject", "Support Request")
             
             response_message = f"Ticket #{ticket_id} created: '{subject}'. We'll get back to you soon."
-            
-            logging.info(f"Request {request_id}: Successfully created ticket {ticket_id} from WhatsApp")
-            
+                        
         elif ticket_result.get("status") == "validation_failed":
             response_message = ticket_result.get("message", "Please provide more details about your issue.")
             
@@ -89,7 +85,6 @@ async def twilio_whatsapp_webhook(
         # Send WhatsApp response back to customer (pass ticket_id for template variables)
         logging.info(f"Request {request_id}: Attempting to send WhatsApp response to {clean_from}")
         logging.info(f"Request {request_id}: Response message: {response_message}")
-        logging.info(f"Request {request_id}: Ticket ID: {ticket_id}")
         
         whatsapp_response = await twilio_service.send_whatsapp_response(clean_from, response_message, request_id, ticket_id)
         
@@ -98,7 +93,6 @@ async def twilio_whatsapp_webhook(
             logging.error(f"Request {request_id}: Error details: {whatsapp_response.get('message', 'Unknown error')}")
         else:
             logging.info(f"Request {request_id}: WhatsApp response sent successfully - Used template: {whatsapp_response.get('used_template', False)}")
-            logging.info(f"Request {request_id}: Message SID: {whatsapp_response.get('message_sid', 'N/A')}")
             logging.info(f"Request {request_id}: To number: {whatsapp_response.get('to_number', 'N/A')}")
         
         # Return TwiML response (empty for now, since we're sending WhatsApp message separately)

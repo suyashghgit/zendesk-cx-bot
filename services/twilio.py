@@ -26,7 +26,7 @@ class TwilioService:
         
         if self.client is None:
             self.client = Client(self.account_sid, self.auth_token)
-            logging.info(f"Twilio client initialized - Account SID: {self.account_sid[:8]}...")
+            logging.info(f"Twilio client initialized")
         
         return self.client
     
@@ -103,7 +103,6 @@ class TwilioService:
                         "name": f"WhatsApp User ({phone_number})",
                         "email": f"{phone_number}@whatsapp.zendesk.com"
                     },
-                    "tags": ["whatsapp", "auto-created"],
                     "priority": self._determine_priority(clean_message),
                     "type": "incident"
                 }
@@ -204,8 +203,6 @@ class TwilioService:
                 content_variables = self._prepare_content_variables(message, ticket_id)
                 
                 logging.info(f"Request {request_id}: Sending WhatsApp template message to {formatted_number}")
-                logging.info(f"Request {request_id}: Content SID: {self.content_sid}")
-                logging.info(f"Request {request_id}: Content variables: {content_variables}")
                 
                 message_sid = client.messages.create(
                     from_=f"whatsapp:{self.whatsapp_number}",
@@ -214,20 +211,8 @@ class TwilioService:
                     to=formatted_number
                 )
                 
-                logging.info(f"Request {request_id}: WhatsApp template message sent successfully - SID: {message_sid.sid}")
-            else:
-                # Fallback to regular message (for WhatsApp, we should use body)
-                logging.info(f"Request {request_id}: Sending WhatsApp regular message to {formatted_number}")
-                logging.info(f"Request {request_id}: Message: {message}")
-                
-                message_sid = client.messages.create(
-                    body=message,
-                    from_=f"whatsapp:{self.whatsapp_number}",
-                    to=formatted_number
-                )
-                
-                logging.info(f"Request {request_id}: WhatsApp message sent successfully - SID: {message_sid.sid}")
-            
+                logging.info(f"Request {request_id}: WhatsApp template message sent successfully ")
+                            
             return {
                 "status": "success",
                 "message_sid": message_sid.sid,

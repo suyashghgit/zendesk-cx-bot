@@ -22,7 +22,7 @@ The application follows a **microservices architecture** with clear separation o
 
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Zendesk       │    │   FastAPI App    │    │   Azure OpenAI  │
+│   Zendesk       │    │   FastAPI App    │◄───│   Azure OpenAI  │
 │   Webhooks      │───▶│   (Main Logic)   │───▶│   (AI Engine)   │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
                               │
@@ -81,7 +81,7 @@ When a new ticket is created, the system:
 When a ticket is marked as "SOLVED", the system:
 
 1. **Triggers analysis** based on status change
-2. **Extracts comments** from the entire conversation
+2. **Extracts comments** from the entire conversation (public comments only)
 3. **Analyzes interaction** using AI for:
    - Sentiment analysis (Positive, Neutral, Negative)
    - Satisfaction likelihood (High, Medium, Low)
@@ -90,7 +90,7 @@ When a ticket is marked as "SOLVED", the system:
    - Pain points identification
    - Frustration signals detection
    - Action recommendations
-4. **Updates ticket** with comprehensive analysis report
+4. **Updates ticket** with comprehensive analysis report (as private comment for internal use only)
 5. **Provides insights** for continuous improvement
 
 ## Technical Implementation
@@ -102,7 +102,7 @@ When a ticket is marked as "SOLVED", the system:
 - **API Integration**: Zendesk REST API
 - **Configuration**: Pydantic Settings
 - **Logging**: Python logging with file and console output
-- **Deployment**: Uvicorn ASGI server
+- **Deployment**: Uvicorn server
 
 ### Key Features
 
@@ -176,21 +176,6 @@ python main.py
 
 The application will automatically reload when code changes are detected.
 
-### Production Deployment
-
-For production deployment:
-
-1. **Use a production ASGI server**:
-   ```bash
-   uvicorn main:app --host 0.0.0.0 --port 8080 --workers 4
-   ```
-
-2. **Set up reverse proxy** (nginx/Apache) for SSL termination
-
-3. **Configure environment variables** for production
-
-4. **Set up monitoring** and logging aggregation
-
 ## Why This Solution Works
 
 ### 1. **Intelligent Automation**
@@ -227,7 +212,7 @@ The application delivers significant business value:
 - **Data-Driven Insights**: Provides analytics for continuous improvement
 - **Cost Savings**: Reduces manual processing costs and improves resource allocation
 
-### 5. **Technical Excellence**
+### 5. **Technical Value**
 
 The solution demonstrates technical best practices:
 
@@ -236,14 +221,6 @@ The solution demonstrates technical best practices:
 - **Performance**: Asynchronous processing for optimal performance
 - **Security**: Secure API key management and validation
 - **Monitoring**: Comprehensive logging and request tracking
-
-## Future Enhancements
-
-1. **Multi-language Support**: Extend categorization to multiple languages
-2. **Custom Categories**: Allow dynamic category creation based on business needs
-3. **Advanced Analytics**: Dashboard for support quality metrics and trends
-4. **Integration Expansion**: Support for other helpdesk platforms
-5. **Machine Learning**: Continuous learning from categorization feedback
 
 ## Conclusion
 

@@ -172,6 +172,55 @@ class ZendeskService:
                 "message": f"Exception occurred while updating ticket with analysis: {str(e)}"
             }
     
+    async def create_ticket(self, ticket_data: dict, request_id: str) -> dict:
+        """
+        Create a new Zendesk ticket.
+        
+        Args:
+            ticket_data (dict): The ticket data to create
+            request_id (str): Unique request ID for logging
+        
+        Returns:
+            dict: Response from Zendesk API with status and ticket details
+        """
+        try:
+            # Zendesk API URL for creating tickets
+            zendesk_url = f"https://{self.zendesk_domain}/api/v2/tickets.json"
+            
+            # Make the API call to create the ticket
+            headers = self._get_headers()
+            response = requests.post(
+                zendesk_url,
+                headers=headers,
+                json=ticket_data,
+                timeout=30
+            )
+            
+            if response.status_code == 201:
+                ticket_response = response.json()
+                ticket_id = ticket_response.get("ticket", {}).get("id")
+                logging.info(f"Request {request_id}: Successfully created Zendesk ticket {ticket_id}")
+                return {
+                    "status": "success",
+                    "message": f"Ticket {ticket_id} created successfully",
+                    "ticket_id": ticket_id,
+                    "zendesk_response": ticket_response
+                }
+            else:
+                logging.error(f"Request {request_id}: Failed to create Zendesk ticket: {response.status_code} - {response.text}")
+                return {
+                    "status": "error",
+                    "message": f"Failed to create ticket: {response.status_code}",
+                    "zendesk_response": response.text
+                }
+                
+        except Exception as e:
+            logging.error(f"Request {request_id}: Error creating Zendesk ticket: {str(e)}")
+            return {
+                "status": "error",
+                "message": f"Exception occurred while creating ticket: {str(e)}"
+            }
+    
     def _format_analysis_for_comment(self, analysis: dict) -> str:
         """
         Format analysis data into a readable comment for Zendesk.

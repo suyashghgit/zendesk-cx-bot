@@ -6,7 +6,7 @@ import logging, os
 
 from app.config import settings  # import settings
 
-from app.routers import webhook  # import  router
+from app.routers import webhook, twilio  # import routers
 
 # Create logs directory if it doesn't exist
 os.makedirs("logs", exist_ok=True)
@@ -47,6 +47,7 @@ async def health_check():
 
 # Mount routers
 app.include_router(webhook.router)
+app.include_router(twilio.router)
 
 # Run locally
 if __name__ == "__main__":

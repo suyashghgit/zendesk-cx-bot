@@ -27,6 +27,13 @@ class Settings(BaseSettings):
     azure_openai_model: str = ""
     azure_openai_api_version: str = ""
     
+    # Twilio Configuration
+    twilio_account_sid: str = ""
+    twilio_auth_token: str = ""
+    twilio_whatsapp_number: str = ""
+    twilio_webhook_secret: str = ""
+    twilio_content_sid: str = ""
+    
     class Config:
         env_file = ".env"
 

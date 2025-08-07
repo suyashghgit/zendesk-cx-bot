@@ -47,7 +47,6 @@ The application follows a **microservices architecture** with clear separation o
 
 #### 3. Twilio Router (`app/routers/twilio.py`)
 - Handles WhatsApp webhooks (`/twilio/whatsapp`)
-- Processes message status callbacks (`/twilio/status`)
 - Validates Twilio webhook signatures for security
 - Manages WhatsApp message processing and ticket creation
 
@@ -65,10 +64,9 @@ The application follows a **microservices architecture** with clear separation o
 - WhatsApp message processing and validation
 - Automatic ticket creation from WhatsApp messages
 - Phone number formatting and validation
-- Webhook signature validation for security
 
 #### 7. Utility Functions (`app/utils.py`)
-- Request ID generation for tracking
+- Request ID (UUID) generation for tracking
 - Data parsing and validation
 - Standardized response formatting
 
@@ -76,61 +74,50 @@ The application follows a **microservices architecture** with clear separation o
 
 #### 1. Automatic Ticket Categorization
 
-When a new ticket is created, the system:
+#### When a new ticket is created, the system:
 
-1. **Receives webhook** from Zendesk with ticket details
-2. **Extracts data** (subject, description, ticket ID)
-3. **Analyzes content** using Azure OpenAI's GPT model
-4. **Categorizes ticket** into predefined categories:
-   - `human_resources`, `engineering`, `it_support`, `product`, `design`
-   - `sales`, `marketing`, `finance`, `legal`, `customer_support`
-   - `operations`, `executive`
+- **Receives webhook** from Zendesk with ticket details
+- **Extracts data** (subject, description, ticket ID)
+- **Analyzes content** using Azure OpenAI's GPT model
+- **Categorizes ticket** into predefined categories:
+   - -  `human_resources`, `engineering`, `it_support`, `product`, `design`
+   - - `sales`, `marketing`, `finance`, `legal`, `customer_support`
+   - - `operations`, `executive`
 5. **Updates ticket** with automatic tags and categorization comments
 6. **Logs results** for audit and monitoring
 
 #### 2. Support Quality Analysis
 
-When a ticket is marked as "SOLVED", the system:
+#### When a ticket is marked as "SOLVED", the system:
 
-1. **Triggers analysis** based on status change
-2. **Extracts comments** from the entire conversation (public comments only)
-3. **Analyzes interaction** using AI for:
-   - Sentiment analysis (Positive, Neutral, Negative)
-   - Satisfaction likelihood (High, Medium, Low)
-   - Agent empathy score (1-5 scale)
-   - Clarity score (1-5 scale)
-   - Pain points identification
-   - Frustration signals detection
-   - Action recommendations
-4. **Updates ticket** with comprehensive analysis report (as private comment for internal use only)
-5. **Provides insights** for continuous improvement
+- **Triggers analysis** based on status change
+- **Extracts comments** from the entire conversation (public comments only)
+- **Analyzes interaction** using AI for:
+   - - Sentiment analysis (Positive, Neutral, Negative)
+   - - Satisfaction likelihood (High, Medium, Low)
+   - - Agent empathy score (1-5 scale)
+   - - Clarity score (1-5 scale)
+   - - Pain points identification
+   - - Frustration signals detection
+   - - Action recommendations
+- **Updates ticket** with comprehensive analysis report (as private comment for internal use only)
+- **Provides insights** for continuous improvement
 
 #### 3. WhatsApp Integration
 
-The application includes a comprehensive WhatsApp integration that allows customers to create support tickets directly through WhatsApp messages:
+#### The application includes a comprehensive WhatsApp integration that allows customers to create support tickets directly through WhatsApp messages:
 
-**WhatsApp Ticket Creation Workflow:**
-1. **Customer sends WhatsApp message** to the configured Twilio WhatsApp number
-2. **Twilio webhook** sends message to `/twilio/whatsapp` endpoint
-3. **System validates content** (minimum 10 characters, meaningful content)
-4. **If valid** → Creates Zendesk ticket automatically with:
+#### **WhatsApp Ticket Creation Workflow:**
+#### 1. Customer sends WhatsApp message to the configured Twilio WhatsApp number
+#### 2. **Twilio webhook** sends message to `/twilio/whatsapp` endpoint
+#### 3. **System validates content** (minimum 10 characters, meaningful content)
+#### 4. **If valid** → Creates Zendesk ticket automatically with:
    - Subject generated from first sentence (max 50 characters)
    - Full message as description
    - Requester info (WhatsApp User + phone number)
    - Priority determined by content analysis
-5. **If insufficient** → Sends WhatsApp message asking for more details
-6. **Customer receives confirmation** WhatsApp message with ticket number
-
-**WhatsApp Validation Rules:**
-- **Minimum length**: 10 characters
-- **Must contain actionable content**: Not just "hi", "help", "hello"
-- **Should describe an issue or request**: Contains problem-related keywords
-
-**Security Features:**
-- **Webhook signature validation** for enhanced security
-- **Phone number formatting** and validation
-- **Error handling** with graceful fallbacks
-- **Comprehensive logging** for audit and debugging
+#### 5. **If insufficient** → Sends WhatsApp message asking for more details
+#### 6. **Customer receives confirmation** WhatsApp message with ticket number
 
 ## Technical Implementation
 
@@ -142,7 +129,7 @@ The application includes a comprehensive WhatsApp integration that allows custom
 - **Messaging Platform**: Twilio WhatsApp Business API
 - **Configuration**: Pydantic Settings
 - **Logging**: Python logging with file and console output
-- **Deployment**: Uvicorn server
+- **Deployment**: Uvicorn server (local) https://zendesk-cx-bot.onrender.com (Prod)
 
 ### Key Features
 
@@ -152,9 +139,8 @@ The application includes a comprehensive WhatsApp integration that allows custom
 4. **Data Validation**: Robust data parsing and validation
 5. **Scalable Architecture**: Modular design for easy extension
 6. **Multi-Channel Support**: Webhooks and WhatsApp integration
-7. **Security**: Webhook signature validation and secure API key management
 
-### Configuration Management
+### Configuration Management Environment Variables
 
 The application uses environment variables for configuration:
 
@@ -190,37 +176,52 @@ twilio_content_sid=your_content_sid
 
 ### Installation Steps
 
-1. **Clone the repository**:
+#### 1. **Clone the repository**:
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/suyashghgit/zendesk-cx-bot zendesk-cx-bot
    cd zendesk-cx-bot
    ```
 
-2. **Install dependencies**:
+#### 2. **Install dependencies**:
    ```bash
    pip install -r requirements.txt
    ```
 
-3. **Set up environment variables**:
+#### 3. **Set up environment variables**:
    ```bash
    cp env_example.txt .env
    # Edit .env with your actual credentials
    ```
 
-4. **Configure Twilio WhatsApp** (NEW):
+#### 4. **Configure Twilio WhatsApp**:
    - Set up WhatsApp Business API in Twilio Console
    - Configure webhook endpoints:
-     - WhatsApp webhook: `https://your-domain.com/twilio/whatsapp`
+     - WhatsApp webhook: `https://zendesk-cx-bot.onrender.com/twilio/whatsapp`
    - Add all Twilio credentials to `.env` file
 
-5. **Run the application**:
+#### 5. **Configure Zendesk Webhooks**:
+   - **Ticket Creation Webhook**:
+     - URL: `https://zendesk-cx-bot.onrender.com/ticketCreatedWebhook`
+     - Trigger: When a ticket is created
+     - Method: POST
+   - **Ticket Status Change Webhook**:
+     - URL: `https://zendesk-cx-bot.onrender.com/ticketStatusChangedWebhook`
+     - Trigger: When ticket status changes
+     - Method: POST
+   - Configure in Zendesk Admin Center → Apps and integrations → Webhooks
+
+#### 6. **Run the application**:
    ```bash
    python main.py
    ```
 
-6. **Verify the application**:
-   - Health check: `http://localhost:8080/health`
-   - Root endpoint: `http://localhost:8080/`
+#### 6. **Verify the application**:
+   - Local
+   -  - Health check: `http://localhost:8080/health`
+   - -  Root endpoint: `http://localhost:8080/`
+   - Prod
+   - - Health check: `https://zendesk-cx-bot.onrender.com/health`
+   - -  Root endpoint: `https://zendesk-cx-bot.onrender.com/`
 
 ### Development Mode
 
@@ -235,47 +236,46 @@ The application will automatically reload when code changes are detected.
 
 ### 1. **Intelligent Automation**
 
-The application replaces manual categorization with AI-powered analysis, ensuring:
-- **Consistency**: AI provides uniform categorization across all tickets
-- **Accuracy**: Advanced language models understand context and nuances
-- **Speed**: Real-time processing eliminates manual delays
-- **Scalability**: Handles any volume of tickets without additional resources
+- The application replaces manual categorization with AI-powered analysis, ensuring:
+- - **Consistency**: AI provides uniform categorization across all tickets
+- - **Accuracy**: Advanced language models understand context and nuances
+- - **Speed**: Real-time processing eliminates manual delays
+- - **Scalability**: Handles any volume of tickets without additional resources
 
 ### 2. **Comprehensive Analysis**
 
-The support quality analysis provides:
-- **Actionable Insights**: Identifies specific areas for improvement
-- **Customer Experience**: Tracks sentiment and satisfaction metrics
-- **Agent Performance**: Evaluates empathy and clarity scores
-- **Process Optimization**: Recommends actions for better support
+- The support quality analysis provides:
+- - **Actionable Insights**: Identifies specific areas for improvement
+- - **Customer Experience**: Tracks sentiment and satisfaction metrics
+- - **Agent Performance**: Evaluates empathy and clarity scores
+- - **Process Optimization**: Recommends actions for better support
 
 ### 3. **Seamless Integration**
 
-The solution integrates seamlessly with existing Zendesk workflows:
-- **Non-disruptive**: Works alongside existing processes
-- **Automatic Updates**: Updates tickets with AI insights automatically
-- **Audit Trail**: Comprehensive logging for compliance and debugging
-- **Backward Compatible**: Doesn't require changes to existing Zendesk setup
+- The solution integrates seamlessly with existing Zendesk workflows:
+- - **Non-disruptive**: Works alongside existing processes
+- - **Automatic Updates**: Updates tickets with AI insights automatically
+- - **Audit Trail**: Comprehensive logging for compliance and debugging
+- - **Backward Compatible**: Doesn't require changes to existing Zendesk setup
 
 ### 4. **Business Value**
 
-The application delivers significant business value:
+- The application delivers significant business value:
 
-- **Reduced Response Times**: Automatic categorization speeds up ticket routing
-- **Improved Customer Satisfaction**: Better categorization leads to faster resolution
-- **Operational Efficiency**: Reduces manual workload for support teams
-- **Data-Driven Insights**: Provides analytics for continuous improvement
-- **Cost Savings**: Reduces manual processing costs and improves resource allocation
+- - **Reduced Response Times**: Automatic categorization speeds up ticket routing
+- - **Improved Customer Satisfaction**: Better categorization leads to faster resolution
+- - **Operational Efficiency**: Reduces manual workload for support teams
+- - **Data-Driven Insights**: Provides analytics for continuous improvement
+- - **Cost Savings**: Reduces manual processing costs and improves resource allocation
 
 ### 5. **Technical Value**
 
-The solution demonstrates technical best practices:
+- The solution demonstrates technical best practices:
 
-- **Modular Design**: Easy to maintain and extend
-- **Error Handling**: Robust error handling and logging
-- **Performance**: Asynchronous processing for optimal performance
-- **Security**: Secure API key management and validation
-- **Monitoring**: Comprehensive logging and request tracking
+- - **Error Handling**: Robust error handling and logging
+- - **Performance**: Asynchronous processing for optimal performance
+- - **Security**: Secure API key management and validation
+- - **Monitoring**: Comprehensive logging and request tracking
 
 ## Conclusion
 

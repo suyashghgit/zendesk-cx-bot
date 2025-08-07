@@ -65,7 +65,7 @@ Local development guide including:
 
 ## 📖 Additional Resources
 
-- **GitHub Repository**: [zendesk-cx-bot](https://github.com/your-username/zendesk-cx-bot)
+- **GitHub Repository**: [zendesk-cx-bot](https://github.com/suyashghgit/zendesk-cx-bot)
 - **Environment Setup**: See `env_example.txt` for required configuration
 - **Requirements**: See `requirements.txt` for Python dependencies
 

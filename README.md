@@ -36,9 +36,9 @@ This project includes comprehensive documentation built with **MkDocs** and the 
 ### Documentation Structure
 
 - **Home**: Project overview and quick start guide
-- **Overview**: Comprehensive technical documentation (`APPLICATION_WRITEUP.md`)
-- **Architecture**: System architecture visualization (`architecture-diagram.md`)
-- **Development Setup**: Local development guide (`LOCAL_DEVELOPMENT_SETUP.md`)
+- **Overview**: Comprehensive technical documentation
+- **Architecture**: System architecture visualization
+- **Development Setup**: Local development guide
 
 ## 🛠 Quick Start
 
@@ -53,7 +53,7 @@ This project includes comprehensive documentation built with **MkDocs** and the 
 
 1. **Clone the repository**:
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/suyashghgit/zendesk-cx-bot.git zendesk-cx-bot
    cd zendesk-cx-bot
    ```
 
@@ -101,11 +101,6 @@ The MkDocs documentation includes:
 
 ## 🔧 Development
 
-### Running Tests
-```bash
-pytest
-```
-
 ### Documentation Development
 ```bash
 # Start development server with auto-reload
@@ -114,22 +109,7 @@ pytest
 # Build static site
 ./docs.sh build
 
-# Deploy to GitHub Pages
-./docs.sh deploy
 ```
 
-## 📄 License
-
-This project is licensed under the MIT License.
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Update documentation if needed
-5. Submit a pull request
-
----
 
 *Documentation built with [MkDocs](https://www.mkdocs.org/) and [Material for MkDocs](https://squidfunk.github.io/mkdocs-material/)* 

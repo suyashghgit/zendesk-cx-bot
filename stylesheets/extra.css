@@ -1,0 +1,57 @@
+/* Custom styles for Zendesk CX Bot documentation */
+
+/* Improve code block styling */
+.md-typeset code {
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius: 3px;
+    padding: 2px 4px;
+}
+
+/* Better table styling */
+.md-typeset table {
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Improve heading hierarchy */
+.md-typeset h1 {
+    color: #3f51b5;
+    border-bottom: 2px solid #3f51b5;
+    padding-bottom: 8px;
+}
+
+.md-typeset h2 {
+    color: #5c6bc0;
+    border-bottom: 1px solid #e0e0e0;
+    padding-bottom: 4px;
+}
+
+/* Better link styling */
+.md-typeset a {
+    color: #3f51b5;
+    text-decoration: none;
+}
+
+.md-typeset a:hover {
+    text-decoration: underline;
+}
+
+/* Improve admonition styling */
+.md-typeset .admonition {
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Better list styling */
+.md-typeset ul li {
+    margin-bottom: 4px;
+}
+
+/* Improve blockquote styling */
+.md-typeset blockquote {
+    border-left: 4px solid #3f51b5;
+    background-color: rgba(63, 81, 181, 0.05);
+    padding: 16px;
+    border-radius: 0 8px 8px 0;
+} 

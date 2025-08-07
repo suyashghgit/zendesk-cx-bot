@@ -47,7 +47,7 @@ async def process_ticket_analysis(ticket_id: str, detail: Dict[str, Any], reques
             try:
                 generated_content = llm_response.get("generated_content", "{}")
                 content_data = json.loads(generated_content)
-                analysis = content_data.get("analysis", {})
+                analysis = content_data
                 logging.info(f"Request {request_id}: Ticket Analysis - {json.dumps(analysis, indent=2)}")
                 
                 if analysis:

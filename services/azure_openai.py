@@ -123,7 +123,7 @@ class AzureOpenAIService:
         - confidence: a confidence score between 0 and 1
         - reasoning: brief explanation of why this category was chosen
 
-        Respond only with valid JSON, no additional text."""
+        IMPORTANT: Return ONLY the raw JSON object. Do not wrap in markdown code blocks, do not add any formatting, just the pure JSON."""
 
         user_prompt = f"Subject: {subject}\nDescription: {description}"
 
@@ -184,7 +184,7 @@ class AzureOpenAIService:
         - action_recommendations
         - message_content
 
-        Respond only with valid JSON, no additional text."""
+        IMPORTANT: Return ONLY the raw JSON object. Do not wrap in markdown code blocks, do not add any formatting, just the pure JSON."""
 
         user_prompt = f"Here is the conversation data in json: {comments_json}"
 

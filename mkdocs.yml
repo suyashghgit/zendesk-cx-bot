@@ -1,11 +1,11 @@
 site_name: Zendesk CX Bot Documentation
 site_description: Intelligent FastAPI application for Zendesk ticket categorization and WhatsApp integration
 site_author: Your Name
-site_url: https://your-username.github.io/zendesk-cx-bot/
+site_url: https://suyashghgit.github.io/zendesk-cx-bot/
 
 # Repository
 repo_name: zendesk-cx-bot
-repo_url: https://github.com/your-username/zendesk-cx-bot
+repo_url: https://github.com/suyashghgit/zendesk-cx-bot
 edit_uri: edit/main/docs/
 
 # Theme

@@ -1,5 +1,3 @@
-# app/services/webhook_services.py
-
 import json
 import logging
 from typing import Dict, Any, Optional, Tuple

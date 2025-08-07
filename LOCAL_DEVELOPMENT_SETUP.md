@@ -10,15 +10,10 @@ This guide will help you set up local development for the Twilio WhatsApp integr
 
 ## Step 1: Install ngrok
 
-### Option 1: Using Homebrew (macOS)
+### Using Homebrew (macOS)
 ```bash
 brew install ngrok
 ```
-
-### Option 2: Manual Installation
-1. Go to [ngrok.com](https://ngrok.com/download)
-2. Download for your platform
-3. Extract and add to your PATH
 
 ## Step 2: Authenticate ngrok
 
@@ -94,14 +89,6 @@ Forwarding                    https://abc123.ngrok.io -> http://localhost:8080
    - Verify ngrok is forwarding to the correct port
    - Check ngrok web interface for errors
 
-3. **HTTPS certificate issues**
-   - ngrok provides HTTPS automatically
-   - Make sure you're using the HTTPS URL from ngrok
-
-4. **Twilio webhook validation fails**
-   - This is expected in development
-   - Check logs for "Skipping webhook signature validation" messages
-
 ## Production Deployment
 
 When you're ready for production:
@@ -109,24 +96,8 @@ When you're ready for production:
 1. **Deploy your application** to a cloud service (AWS, Google Cloud, etc.)
 2. **Get a public HTTPS URL** for your application
 3. **Update Twilio webhooks** to use your production URL
-4. **Remove ngrok** - it's only for local development
-
-## Example ngrok Configuration
-
-### Start ngrok with custom subdomain (paid plan):
-```bash
-ngrok http 8080 --subdomain=myapp
-```
-
-### Start ngrok with custom region:
-```bash
-ngrok http 8080 --region=us
-```
-
-### View ngrok logs:
-```bash
-ngrok http 8080 --log=stdout
-```
+4. **Update Zendesk webhooks** to use your production URL
+5. **Remove ngrok** - it's only for local development
 
 ## Security Considerations
 

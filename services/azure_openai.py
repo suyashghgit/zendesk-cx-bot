@@ -4,6 +4,7 @@ import logging
 from typing import Dict, List, Optional, Any
 from openai import AzureOpenAI
 from dotenv import load_dotenv
+from app.config import settings
 
 # Load environment variables
 load_dotenv()
@@ -15,11 +16,11 @@ class AzureOpenAIService:
     
     def __init__(self):
         # Updated configuration to match Azure OpenAI documentation
-        self.endpoint = os.getenv("AZURE_OPENAI_ENDPOINT", "https://zendesk-resource.cognitiveservices.azure.com/")
-        self.model_name = os.getenv("AZURE_OPENAI_MODEL", "model-router")
-        self.deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT", "model-router")
-        self.subscription_key = os.getenv("AZURE_OPENAI_API_KEY")
-        self.api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2024-12-01-preview")
+        self.endpoint = settings.azure_openai_endpoint
+        self.model_name = settings.azure_openai_model
+        self.deployment = settings.azure_openai_deployment
+        self.subscription_key = settings.azure_openai_api_key
+        self.api_version = settings.azure_openai_api_version
         self.client = None
         
         # Validate configuration

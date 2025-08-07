@@ -6,7 +6,6 @@ import re
 import json
 from typing import Dict, Optional, Tuple
 from twilio.rest import Client
-from twilio.request_validator import RequestValidator
 from app.config import settings
 from services.zendesk import zendesk_service
 
@@ -17,10 +16,8 @@ class TwilioService:
         self.account_sid = settings.twilio_account_sid
         self.auth_token = settings.twilio_auth_token
         self.whatsapp_number = settings.twilio_whatsapp_number
-        self.webhook_secret = settings.twilio_webhook_secret
         self.content_sid = settings.twilio_content_sid
         self.client = None
-        self.validator = None
     
     def _get_client(self):
         """Lazy initialization of Twilio client"""
@@ -32,41 +29,6 @@ class TwilioService:
             logging.info(f"Twilio client initialized - Account SID: {self.account_sid[:8]}...")
         
         return self.client
-    
-    def _get_validator(self):
-        """Lazy initialization of Twilio request validator"""
-        if not self.webhook_secret:
-            logging.warning("No Twilio webhook secret configured. Webhook signature validation will be skipped.")
-            return None
-        
-        if self.validator is None:
-            self.validator = RequestValidator(self.webhook_secret)
-            logging.info("Twilio request validator initialized")
-        
-        return self.validator
-    
-    def validate_webhook_signature(self, url: str, params: Dict, signature: str) -> bool:
-        """
-        Validate Twilio webhook signature for security.
-        
-        Args:
-            url (str): The webhook URL
-            params (Dict): The request parameters
-            signature (str): The signature header from Twilio
-        
-        Returns:
-            bool: True if signature is valid, False otherwise
-        """
-        try:
-            validator = self._get_validator()
-            if validator is None:
-                logging.warning("Skipping webhook signature validation - no webhook secret configured")
-                return True  # Allow request to proceed when no secret is configured
-            
-            return validator.validate(url, params, signature)
-        except Exception as e:
-            logging.error(f"Error validating Twilio webhook signature: {str(e)}")
-            return False
     
     def validate_whatsapp_content(self, message_body: str) -> Tuple[bool, str]:
         """

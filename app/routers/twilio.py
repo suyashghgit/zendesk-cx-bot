@@ -13,54 +13,6 @@ from services.twilio import twilio_service
 
 router = APIRouter()
 
-def validate_twilio_request(request: Request) -> bool:
-    """
-    Validate Twilio webhook signature for security.
-    
-    Args:
-        request (Request): FastAPI request object
-    
-    Returns:
-        bool: True if signature is valid, False otherwise
-    """
-    try:
-        # Get the signature from headers
-        signature = request.headers.get("X-Twilio-Signature", "")
-        if not signature:
-            logging.warning("No Twilio signature found in request headers")
-            return False
-        
-        # Get the full URL
-        url = str(request.url)
-        
-        # Get form data as dict
-        form_data = {}
-        if request.method == "POST":
-            try:
-                body = request.body()
-                if body:
-                    # Parse form data manually
-                    body_str = body.decode('utf-8')
-                    for item in body_str.split('&'):
-                        if '=' in item:
-                            key, value = item.split('=', 1)
-                            form_data[key] = value
-            except Exception as e:
-                logging.error(f"Error parsing form data: {str(e)}")
-                return False
-        
-        # Validate signature
-        is_valid = twilio_service.validate_webhook_signature(url, form_data, signature)
-        
-        if not is_valid:
-            logging.warning("Invalid Twilio webhook signature")
-        
-        return is_valid
-        
-    except Exception as e:
-        logging.error(f"Error validating Twilio request: {str(e)}")
-        return False
-
 @router.post("/twilio/whatsapp")
 async def twilio_whatsapp_webhook(
     request: Request,
@@ -110,12 +62,6 @@ async def twilio_whatsapp_webhook(
         logging.info(f"Request {request_id}: Received WhatsApp message from {clean_from} to {clean_to}")
         logging.info(f"Request {request_id}: Message SID: {MessageSid}")
         logging.info(f"Request {request_id}: Message body: {Body}")
-        
-        # Validate Twilio webhook signature (optional - will be skipped if no secret configured)
-        validation_result = validate_twilio_request(request)
-        if not validation_result:
-            logging.warning(f"Request {request_id}: Invalid Twilio signature or no signature found, but proceeding")
-            # In production, you might want to raise an HTTPException here if webhook secret is configured
         
         # Process the WhatsApp message and create ticket
         ticket_result = await twilio_service.create_ticket_from_whatsapp(clean_from, Body, request_id)

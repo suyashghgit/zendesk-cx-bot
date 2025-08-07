@@ -1,3 +1,4 @@
+```mermaid
 graph TD
 
 %% WhatsApp Ticket Creation Flow
@@ -24,4 +25,5 @@ Z3 --> FP3[FastAPI App<br/>Webhook Router]
 FP3 --> AI2[Azure OpenAI<br/>Support Quality Analysis]
 AI2 --> AR1[Generate Report:<br/>Sentiment, Empathy, Clarity, etc.]
 AR1 --> PC[Post Private Comment to Ticket]
+```
 

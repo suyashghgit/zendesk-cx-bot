@@ -2,7 +2,7 @@
 
 ## Overview
 
-The **Zendesk CX Bot** is an intelligent FastAPI application that automates ticket categorization and analysis for Zendesk customer support systems. It leverages Azure OpenAI's advanced language models to provide real-time ticket processing, automatic categorization, and quality analysis, significantly improving customer support efficiency and decision-making.
+The **Zendesk CX Bot** is an intelligent FastAPI application that automates ticket categorization and analysis for Zendesk customer support systems. It leverages Azure OpenAI's advanced language models to provide real-time ticket processing, automatic categorization, and quality analysis, significantly improving customer support efficiency and decision-making. **Additionally, the application includes a comprehensive Twilio WhatsApp integration that allows customers to create support tickets directly through WhatsApp messages.**
 
 ## Problem Statement
 
@@ -45,17 +45,29 @@ The application follows a **microservices architecture** with clear separation o
    - Processes status change events (`/ticketStatusChangedWebhook`)
    - Extracts and validates ticket data
 
-3. **Azure OpenAI Service** (`services/azure_openai.py`)
+3. **Twilio Router** (`app/routers/twilio.py`)
+   - Handles WhatsApp webhooks (`/twilio/whatsapp`)
+   - Processes message status callbacks (`/twilio/status`)
+   - Validates Twilio webhook signatures for security
+   - Manages WhatsApp message processing and ticket creation
+
+4. **Azure OpenAI Service** (`services/azure_openai.py`)
    - Intelligent ticket categorization using GPT models
    - Support quality analysis and insights generation
    - Structured JSON responses for easy integration
 
-4. **Zendesk Service** (`services/zendesk.py`)
+5. **Zendesk Service** (`services/zendesk.py`)
    - API integration for ticket updates
    - Comment extraction and analysis
    - Automated tagging and categorization
 
-5. **Utility Functions** (`app/utils.py`)
+6. **Twilio Service** (`services/twilio.py`)
+   - WhatsApp message processing and validation
+   - Automatic ticket creation from WhatsApp messages
+   - Phone number formatting and validation
+   - Webhook signature validation for security
+
+7. **Utility Functions** (`app/utils.py`)
    - Request ID generation for tracking
    - Data parsing and validation
    - Standardized response formatting
@@ -93,6 +105,33 @@ When a ticket is marked as "SOLVED", the system:
 4. **Updates ticket** with comprehensive analysis report (as private comment for internal use only)
 5. **Provides insights** for continuous improvement
 
+#### 3. WhatsApp Integration
+
+The application includes a comprehensive WhatsApp integration that allows customers to create support tickets directly through WhatsApp messages:
+
+**WhatsApp Ticket Creation Workflow:**
+1. **Customer sends WhatsApp message** to the configured Twilio WhatsApp number
+2. **Twilio webhook** sends message to `/twilio/whatsapp` endpoint
+3. **System validates content** (minimum 10 characters, meaningful content)
+4. **If valid** → Creates Zendesk ticket automatically with:
+   - Subject generated from first sentence (max 50 characters)
+   - Full message as description
+   - Requester info (WhatsApp User + phone number)
+   - Priority determined by content analysis
+5. **If insufficient** → Sends WhatsApp message asking for more details
+6. **Customer receives confirmation** WhatsApp message with ticket number
+
+**WhatsApp Validation Rules:**
+- **Minimum length**: 10 characters
+- **Must contain actionable content**: Not just "hi", "help", "hello"
+- **Should describe an issue or request**: Contains problem-related keywords
+
+**Security Features:**
+- **Webhook signature validation** for enhanced security
+- **Phone number formatting** and validation
+- **Error handling** with graceful fallbacks
+- **Comprehensive logging** for audit and debugging
+
 ## Technical Implementation
 
 ### Technology Stack
@@ -100,6 +139,7 @@ When a ticket is marked as "SOLVED", the system:
 - **Backend Framework**: FastAPI (Python)
 - **AI Engine**: Azure OpenAI GPT models
 - **API Integration**: Zendesk REST API
+- **Messaging Platform**: Twilio WhatsApp Business API
 - **Configuration**: Pydantic Settings
 - **Logging**: Python logging with file and console output
 - **Deployment**: Uvicorn server
@@ -111,6 +151,8 @@ When a ticket is marked as "SOLVED", the system:
 3. **Request Tracking**: Unique request IDs for all operations
 4. **Data Validation**: Robust data parsing and validation
 5. **Scalable Architecture**: Modular design for easy extension
+6. **Multi-Channel Support**: Webhooks and WhatsApp integration
+7. **Security**: Webhook signature validation and secure API key management
 
 ### Configuration Management
 
@@ -128,6 +170,12 @@ azure_openai_api_version=2024-12-01-preview
 zendesk_domain=your-zendesk-domain
 zendesk_email=your-zendesk-email
 zendesk_api_key=your-zendesk-api-key
+
+# Twilio Configuration
+twilio_account_sid=your_twilio_account_sid
+twilio_auth_token=your_twilio_auth_token
+twilio_whatsapp_number=+1234567890
+twilio_content_sid=your_content_sid
 ```
 
 ## How to Run the Code
@@ -137,7 +185,8 @@ zendesk_api_key=your-zendesk-api-key
 1. **Python 3.8+** installed
 2. **Azure OpenAI** account and API key
 3. **Zendesk** account with API access
-4. **Git** for cloning the repository
+4. **Twilio** account with WhatsApp Business API access
+5. **Git** for cloning the repository
 
 ### Installation Steps
 
@@ -158,12 +207,18 @@ zendesk_api_key=your-zendesk-api-key
    # Edit .env with your actual credentials
    ```
 
-4. **Run the application**:
+4. **Configure Twilio WhatsApp** (NEW):
+   - Set up WhatsApp Business API in Twilio Console
+   - Configure webhook endpoints:
+     - WhatsApp webhook: `https://your-domain.com/twilio/whatsapp`
+   - Add all Twilio credentials to `.env` file
+
+5. **Run the application**:
    ```bash
    python main.py
    ```
 
-5. **Verify the application**:
+6. **Verify the application**:
    - Health check: `http://localhost:8080/health`
    - Root endpoint: `http://localhost:8080/`
 

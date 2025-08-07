@@ -2,7 +2,7 @@
 
 ## Overview
 
-The **Zendesk CX Bot** is an intelligent FastAPI application that automates ticket categorization and analysis for Zendesk customer support systems. It leverages Azure OpenAI's advanced language models to provide real-time ticket processing, automatic categorization, and quality analysis, significantly improving customer support efficiency and decision-making. **Additionally, the application includes a comprehensive Twilio WhatsApp integration that allows customers to create support tickets directly through WhatsApp messages.**
+The **Zendesk CX Bot** is an intelligent FastAPI application that automates ticket categorization and analysis for Zendesk customer support systems. It leverages Azure OpenAI's advanced language models to provide real-time ticket processing, automatic categorization, and quality analysis, significantly improving customer support efficiency and decision-making. Additionally, the application includes a comprehensive Twilio WhatsApp integration that allows customers to create support tickets directly through WhatsApp messages.
 
 ## Problem Statement
 
@@ -35,42 +35,42 @@ The application follows a **microservices architecture** with clear separation o
 
 ### Key Components
 
-1. **FastAPI Application** (`main.py`)
-   - RESTful API server with webhook endpoints
-   - CORS middleware for cross-origin requests
-   - Comprehensive logging and error handling
+#### 1. FastAPI Application (`main.py`)
+- RESTful API server with webhook endpoints
+- CORS middleware for cross-origin requests
+- Comprehensive logging and error handling
 
-2. **Webhook Router** (`app/routers/webhook.py`)
-   - Handles ticket creation events (`/ticketCreatedWebhook`)
-   - Processes status change events (`/ticketStatusChangedWebhook`)
-   - Extracts and validates ticket data
+#### 2. Webhook Router (`app/routers/webhook.py`)
+- Handles ticket creation events (`/ticketCreatedWebhook`)
+- Processes status change events (`/ticketStatusChangedWebhook`)
+- Extracts and validates ticket data
 
-3. **Twilio Router** (`app/routers/twilio.py`)
-   - Handles WhatsApp webhooks (`/twilio/whatsapp`)
-   - Processes message status callbacks (`/twilio/status`)
-   - Validates Twilio webhook signatures for security
-   - Manages WhatsApp message processing and ticket creation
+#### 3. Twilio Router (`app/routers/twilio.py`)
+- Handles WhatsApp webhooks (`/twilio/whatsapp`)
+- Processes message status callbacks (`/twilio/status`)
+- Validates Twilio webhook signatures for security
+- Manages WhatsApp message processing and ticket creation
 
-4. **Azure OpenAI Service** (`services/azure_openai.py`)
-   - Intelligent ticket categorization using GPT models
-   - Support quality analysis and insights generation
-   - Structured JSON responses for easy integration
+#### 4. Azure OpenAI Service (`services/azure_openai.py`)
+- Intelligent ticket categorization using GPT models
+- Support quality analysis and insights generation
+- Structured JSON responses for easy integration
 
-5. **Zendesk Service** (`services/zendesk.py`)
-   - API integration for ticket updates
-   - Comment extraction and analysis
-   - Automated tagging and categorization
+#### 5. Zendesk Service (`services/zendesk.py`)
+- API integration for ticket updates
+- Comment extraction and analysis
+- Automated tagging and categorization
 
-6. **Twilio Service** (`services/twilio.py`)
-   - WhatsApp message processing and validation
-   - Automatic ticket creation from WhatsApp messages
-   - Phone number formatting and validation
-   - Webhook signature validation for security
+#### 6. Twilio Service (`services/twilio.py`)
+- WhatsApp message processing and validation
+- Automatic ticket creation from WhatsApp messages
+- Phone number formatting and validation
+- Webhook signature validation for security
 
-7. **Utility Functions** (`app/utils.py`)
-   - Request ID generation for tracking
-   - Data parsing and validation
-   - Standardized response formatting
+#### 7. Utility Functions (`app/utils.py`)
+- Request ID generation for tracking
+- Data parsing and validation
+- Standardized response formatting
 
 ### Core Functionality
 

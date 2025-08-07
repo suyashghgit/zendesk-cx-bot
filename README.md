@@ -28,9 +28,9 @@ This project includes comprehensive documentation built with **MkDocs** and the 
    ```
    Static files will be generated in the `site/` directory.
 
-3. **Deploy to GitHub Pages**:
+3. **Github pages link**:
    ```bash
-   ./docs.sh deploy
+   https://suyashghgit.github.io/zendesk-cx-bot/
    ```
 
 ### Documentation Structure

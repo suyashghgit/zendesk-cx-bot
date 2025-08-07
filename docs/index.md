@@ -46,7 +46,7 @@ Local development guide including:
 - **Messaging Platform**: Twilio WhatsApp Business API
 - **Configuration**: Pydantic Settings
 - **Logging**: Python logging with file and console output
-- **Deployment**: Uvicorn server
+- **Deployment**: Uvicorn server (local) https://zendesk-cx-bot.onrender.com (Prod)
 
 ## 🎯 Use Cases
 

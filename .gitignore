@@ -38,3 +38,6 @@ venv.bak/
 .env.local
 .env.production
 .env.staging
+
+# Documentation site
+site/

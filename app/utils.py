@@ -55,26 +55,4 @@ def extract_ticket_data(data: Dict[str, Any], request_id: str) -> Tuple[str, str
     else:
         logging.warning(f"Request {request_id}: No 'detail' field found in JSON data")
     
-    return subject, description, ticket_id
-
-def create_success_response(request_id: str, message: str, **kwargs) -> Dict[str, Any]:
-    """Create a standardized success response."""
-    response = {
-        "status": "success",
-        "message": message,
-        "request_id": request_id,
-        "timestamp": datetime.now().isoformat()
-    }
-    response.update(kwargs)
-    return response
-
-def create_error_response(request_id: str, error: Exception) -> Dict[str, Any]:
-    """Create a standardized error response."""
-    logging.error(f"Request {request_id}: Error occurred - {str(error)}")
-    logging.error(f"Request {request_id}: Error type - {type(error).__name__}")
-    return {
-        "status": "error",
-        "message": str(error),
-        "request_id": request_id,
-        "timestamp": datetime.now().isoformat()
-    } 
+    return subject, description, ticket_id 

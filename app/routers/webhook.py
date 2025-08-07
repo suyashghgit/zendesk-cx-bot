@@ -6,9 +6,7 @@ from app.utils import (
     log_request_start,
     parse_request_body,
     log_request_body,
-    extract_ticket_data,
-    create_success_response,
-    create_error_response
+    extract_ticket_data
 )
 from app.services.webhook_services import (
     process_ticket_categorization,
@@ -51,16 +49,20 @@ async def ticket_created_webhook(request: Request):
             logging.warning(f"Request {request_id}: No ticket ID found, skipping Zendesk update")
 
         logging.info(f"Request {request_id}: Webhook processed successfully")
-        return create_success_response(
-            request_id,
-            "Webhook logged successfully",
-            data_type=data_type,
-            categorization_response=categorization_response,
-            zendesk_update_result=zendesk_update_result
-        )
+        return {
+            "status": "success",
+            "message": "Webhook logged successfully",
+            "request_id": request_id
+        }
 
     except Exception as e:
-        return create_error_response(request_id, e)
+        logging.error(f"Request {request_id}: Error occurred - {str(e)}")
+        logging.error(f"Request {request_id}: Error type - {type(e).__name__}")
+        return {
+            "status": "error",
+            "message": str(e),
+            "request_id": request_id
+        }
 
 # Ticket status changed webhook
 @router.post("/ticketStatusChangedWebhook")
@@ -95,27 +97,31 @@ async def ticket_status_changed_webhook(request: Request):
                 else:
                     logging.warning(f"Request {request_id}: No ticket ID found, skipping summary update")
                 
-                return create_success_response(
-                    request_id,
-                    "Ticket status changed to SOLVED",
-                    ticket_id=detail.get("id", ""),
-                    current_status=current_status,
-                    ticket_status=ticket_status,
-                    llm_response=llm_response,
-                    analysis_update_result=analysis_update_result
-                )
+                return {
+                    "status": "success",
+                    "message": "Ticket status changed to SOLVED",
+                    "request_id": request_id
+                }
             else:
                 logging.info(f"Request {request_id}: Ticket status is not SOLVED (current: {current_status}, ticket: {ticket_status})")
-                return create_success_response(
-                    request_id,
-                    "Ticket status changed but not to SOLVED",
-                    ticket_id=detail.get("id", ""),
-                    current_status=current_status,
-                    ticket_status=ticket_status
-                )
+                return {
+                    "status": "success",
+                    "message": "Ticket status changed but not to SOLVED",
+                    "request_id": request_id
+                }
         else:
             logging.warning(f"Request {request_id}: Invalid data format")
-            return create_error_response(request_id, Exception("Invalid data format"))
+            return {
+                "status": "error",
+                "message": "Invalid data format",
+                "request_id": request_id
+            }
 
     except Exception as e:
-        return create_error_response(request_id, e)
+        logging.error(f"Request {request_id}: Error occurred - {str(e)}")
+        logging.error(f"Request {request_id}: Error type - {type(e).__name__}")
+        return {
+            "status": "error",
+            "message": str(e),
+            "request_id": request_id
+        }

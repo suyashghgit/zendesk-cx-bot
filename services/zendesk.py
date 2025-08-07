@@ -114,7 +114,7 @@ class ZendeskService:
                 "ticket": {
                     "tags": [f"auto_categorized_{category}"],
                     "comment": {
-                        "body": f"Ticket automatically categorized as '{category}' with {confidence:.2%}.",
+                        "body": f"Ticket automatically categorized as '{category}' with {confidence:.2%} score.",
                         "public": False
                     }
                 }

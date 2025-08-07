@@ -1,32 +1,55 @@
+# app/main.py
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import uvicorn
+import logging, os
 
-# Create FastAPI app instance
+from app.config import settings  # import settings
+
+from app.routers import webhook, twilio  # import routers
+
+# Create logs directory if it doesn't exist
+os.makedirs("logs", exist_ok=True)
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('logs/webhook_requests.log'),
+        logging.StreamHandler()
+    ]
+)
+
 app = FastAPI(
-    title="FastAPI Boilerplate",
+    title=settings.app_name,
     description="A basic FastAPI boilerplate application",
-    version="1.0.0"
+    version=settings.app_version
 )
 
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure this properly for production
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=settings.cors_origins,
+    allow_credentials=settings.cors_allow_credentials,
+    allow_methods=settings.cors_allow_methods,
+    allow_headers=settings.cors_allow_headers,
 )
 
+# Root endpoint
 @app.get("/")
 async def root():
-    """Root endpoint"""
-    return {"message": "Welcome to FastAPI Boilerplate!"}
+    return {"message": "Welcome to Zendesk AI Assistant!"}
 
+# Health check endpoint
 @app.get("/health")
 async def health_check():
-    """Health check endpoint"""
     return {"status": "healthy", "message": "Service is running"}
 
+# Mount routers
+app.include_router(webhook.router)
+app.include_router(twilio.router)
+
+# Run locally
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True) 
+    import uvicorn
+    uvicorn.run("main:app", host=settings.host, port=settings.port, reload=True)

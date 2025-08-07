@@ -1,6 +1,6 @@
 site_name: Zendesk CX Bot Documentation
 site_description: Intelligent FastAPI application for Zendesk ticket categorization and WhatsApp integration
-site_author: Your Name
+site_author: Suyash Ghimire
 site_url: https://suyashghgit.github.io/zendesk-cx-bot/
 
 # Repository

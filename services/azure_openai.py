@@ -32,15 +32,43 @@ class AzureOpenAIService:
         
         if self.client is None:
             try:
-                # Updated client initialization to match documentation
-                self.client = AzureOpenAI(
-                    api_version=self.api_version,
-                    azure_endpoint=self.endpoint,
-                    api_key=self.subscription_key,
-                )
-                logging.info(f"Azure OpenAI client initialized successfully")
+                # Create client configuration without any proxy settings
+                client_config = {
+                    "api_version": self.api_version,
+                    "azure_endpoint": self.endpoint,
+                    "api_key": self.subscription_key,
+                }
+                
+                logging.info(f"Initializing Azure OpenAI client with config: {client_config}")
+                
+                # Remove any proxy-related environment variables that might interfere
+                # This is to prevent the 'proxies' parameter error in deployment
+                original_http_proxy = os.environ.pop('HTTP_PROXY', None)
+                original_https_proxy = os.environ.pop('HTTPS_PROXY', None)
+                original_http_proxy_lower = os.environ.pop('http_proxy', None)
+                original_https_proxy_lower = os.environ.pop('https_proxy', None)
+                
+                if original_http_proxy or original_https_proxy or original_http_proxy_lower or original_https_proxy_lower:
+                    logging.info(f"Temporarily removed proxy environment variables for Azure OpenAI client initialization")
+                
+                try:
+                    self.client = AzureOpenAI(**client_config)
+                    logging.info(f"Azure OpenAI client initialized successfully")
+                finally:
+                    # Restore proxy environment variables if they existed
+                    if original_http_proxy:
+                        os.environ['HTTP_PROXY'] = original_http_proxy
+                    if original_https_proxy:
+                        os.environ['HTTPS_PROXY'] = original_https_proxy
+                    if original_http_proxy_lower:
+                        os.environ['http_proxy'] = original_http_proxy_lower
+                    if original_https_proxy_lower:
+                        os.environ['https_proxy'] = original_https_proxy_lower
+                        
             except Exception as e:
                 logging.error(f"Failed to initialize Azure OpenAI client: {str(e)}")
+                logging.error(f"Error type: {type(e).__name__}")
+                logging.error(f"Azure OpenAI SDK version: {AzureOpenAI.__module__}")
                 raise ValueError(f"Failed to initialize Azure OpenAI client: {str(e)}")
         
         return self.client
@@ -96,6 +124,16 @@ class AzureOpenAIService:
             
         except Exception as e:
             logging.error(f"Error calling Azure OpenAI: {str(e)}")
+            logging.error(f"Error type: {type(e).__name__}")
+            
+            # Check if it's a client initialization error
+            if "proxies" in str(e).lower() or "unexpected keyword argument" in str(e).lower():
+                logging.error("Detected proxy or configuration issue with Azure OpenAI client")
+                return {
+                    "status": "error",
+                    "message": f"Azure OpenAI client configuration error: {str(e)}. Please check deployment environment settings."
+                }
+            
             return {
                 "status": "error",
                 "message": f"Exception occurred while calling Azure OpenAI: {str(e)}"

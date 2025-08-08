@@ -1,15 +1,15 @@
 #Zendesk API Configuration
 ZENDESK_API_KEY=
-ZENDESK_DOMAIN=self-43692.zendesk.com
-ZENDESK_EMAIL=skghimire22@gmail.com
+ZENDESK_DOMAIN=
+ZENDESK_EMAIL=
 
 #Azure OpenAI API
 AZURE_OPENAI_API_KEY=
 # Additional Azure OpenAI Configuration
-AZURE_OPENAI_ENDPOINT=https://zendesk-resource.cognitiveservices.azure.com/
-AZURE_OPENAI_DEPLOYMENT=model-router
-AZURE_OPENAI_MODEL=model-router
-AZURE_OPENAI_API_VERSION=2024-12-01-preview
+AZURE_OPENAI_ENDPOINT=
+AZURE_OPENAI_DEPLOYMENT=
+AZURE_OPENAI_MODEL=
+AZURE_OPENAI_API_VERSION=
 
 #Twilio Configuration
 TWILIO_ACCOUNT_SID=

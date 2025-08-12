@@ -11,6 +11,7 @@ pytest-asyncio==0.21.1
 Jinja2==3.1.2
 openai==1.55.3
 twilio==8.10.0
+galileo-sdk==0.1.0
 
 # Documentation dependencies
 mkdocs==1.6.1

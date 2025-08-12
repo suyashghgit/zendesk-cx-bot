@@ -27,6 +27,10 @@ class Settings(BaseSettings):
     azure_openai_model: str = ""
     azure_openai_api_version: str = ""
     
+    # Galileo Configuration
+    galileo_api_key: str = ""
+    galileo_project_name: str = ""
+    
     # Twilio Configuration
     twilio_account_sid: str = ""
     twilio_auth_token: str = ""
